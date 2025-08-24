@@ -1,0 +1,61 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  createdAt DateTime @default(now())
+  
+  signals   Signal[]
+  
+  @@map("users")
+}
+
+model Signal {
+  id             String   @id @default(cuid())
+  name           String
+  question       String
+  answerOptions  String[] // JSON array of answer options
+  voteCount      Int      // Number of responses desired per day
+  active         Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  
+  createdBy      String
+  user           User     @relation(fields: [createdBy], references: [id], onDelete: Cascade)
+  
+  signalRuns     SignalRun[]
+  
+  @@map("signals")
+}
+
+model SignalRun {
+  id               String    @id @default(cuid())
+  rapidataOrderId  String?   // Rapidata order ID
+  startedAt        DateTime  @default(now())
+  completedAt      DateTime?
+  
+  signalId         String
+  signal           Signal    @relation(fields: [signalId], references: [id], onDelete: Cascade)
+  
+  responses        Response[]
+  
+  @@map("signal_runs")
+}
+
+model Response {
+  id             String   @id @default(cuid())
+  selectedOption String   // The chosen answer option
+  timestamp      DateTime @default(now())
+  
+  signalRunId    String
+  signalRun      SignalRun @relation(fields: [signalRunId], references: [id], onDelete: Cascade)
+  
+  @@map("responses")
+}

@@ -1,6 +1,7 @@
 'use client';
 
 import { useUser, useStackApp } from "@stackframe/stack";
+import Link from "next/link";
 
 export default function Home() {
   const user = useUser();
@@ -12,7 +13,18 @@ export default function Home() {
       <div className="border-b border-gray-200">
         <div className="container mx-auto px-4 py-4">
           <div className="flex justify-between items-center">
-            <div className="text-lg font-semibold text-gray-900">CrowdScope</div>
+            <div className="flex items-center gap-6">
+              <Link href="/" className="text-lg font-semibold text-gray-900">
+                CrowdScope
+              </Link>
+              {user && (
+                <nav className="flex gap-4">
+                  <Link href="/signals" className="text-gray-600 hover:text-gray-900">
+                    Signals
+                  </Link>
+                </nav>
+              )}
+            </div>
             <div className="flex items-center gap-4">
               {user ? (
                 <div className="flex items-center gap-3">
@@ -79,9 +91,23 @@ export default function Home() {
 
           {/* CTA Section */}
           <div className="mt-12 pt-8 border-t border-gray-200">
-            <p className="text-gray-600 text-lg">
-              Coming Soon - Get insights into the crowd like never before
-            </p>
+            {user ? (
+              <div className="space-y-4">
+                <p className="text-gray-600 text-lg">
+                  Ready to create your first signal?
+                </p>
+                <Link
+                  href="/signals"
+                  className="inline-flex px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors font-medium"
+                >
+                  Go to Signals Dashboard
+                </Link>
+              </div>
+            ) : (
+              <p className="text-gray-600 text-lg">
+                Sign in to start creating signals and tracking crowd insights
+              </p>
+            )}
           </div>
         </div>
       </div>
