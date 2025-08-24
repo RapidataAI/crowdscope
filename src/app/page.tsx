@@ -1,6 +1,46 @@
+'use client';
+
+import { useUser, useStackApp } from "@stackframe/stack";
+
 export default function Home() {
+  const user = useUser();
+  const app = useStackApp();
+
   return (
     <main className="min-h-screen bg-white">
+      {/* Auth Header */}
+      <div className="border-b border-gray-200">
+        <div className="container mx-auto px-4 py-4">
+          <div className="flex justify-between items-center">
+            <div className="text-lg font-semibold text-gray-900">CrowdScope</div>
+            <div className="flex items-center gap-4">
+              {user ? (
+                <div className="flex items-center gap-3">
+                  <span className="text-sm text-gray-600">
+                    Welcome, {user.displayName || user.primaryEmail}
+                  </span>
+                  <button
+                    onClick={() => user.signOut()}
+                    className="px-4 py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-md transition-colors"
+                  >
+                    Sign Out
+                  </button>
+                </div>
+              ) : (
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => app.redirectToSignIn()}
+                    className="px-4 py-2 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors"
+                  >
+                    Sign In
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div className="container mx-auto px-4 py-16">
         <div className="max-w-4xl mx-auto text-center">
           {/* Hero Section */}
