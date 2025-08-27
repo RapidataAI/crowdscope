@@ -1,105 +1,54 @@
 'use client';
 
-import { useState, useEffect } from "react";
 import Link from "next/link";
 import { AuthGuard } from "@/components/AuthGuard";
 import { Header } from "@/components/Header";
-import { useRequireAuth } from "@/hooks/useRequireAuth";
-import { useGlobalNotifications } from "@/app/providers";
-
-interface Signal {
-  id: string;
-  name: string;
-  question: string;
-  answerOptions: string[];
-  voteCount: number;
-  active: boolean;
-  createdAt: string;
-  _count: {
-    signalRuns: number;
-  };
-}
+import { useSignals, useUpdateSignalStatus } from "@/hooks/useSignalsApi";
 
 function SignalsPageContent() {
-  const { user } = useRequireAuth();
-  const { showError } = useGlobalNotifications();
-  const [signals, setSignals] = useState<Signal[]>([]);
-  const [loading, setLoading] = useState(true);
+  // Use React Query hooks instead of manual state management
+  const { data: signals, isLoading, error } = useSignals();
+  const updateSignalStatus = useUpdateSignalStatus();
 
-  useEffect(() => {
-    const fetchSignals = async () => {
-      if (!user?.access_token) {
-        return;
-      }
-
-      try {
-        const headers = {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${user.access_token}`,
-        };
-
-        const response = await fetch('/api/signals', { headers });
-        if (response.ok) {
-          const data = await response.json();
-          setSignals(data);
-        } else {
-          showError('Failed to fetch signals. Please try again.');
-        }
-      } catch (error) {
-        console.error('Error fetching signals:', error);
-        showError('Error loading signals. Please check your connection.');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchSignals();
-  }, [user?.access_token, showError]);
-
-  const toggleSignalStatus = async (signalId: string, currentStatus: boolean) => {
-    if (!user?.access_token) {
-      showError('Authentication required to update signal status.');
-      return;
-    }
-
-    try {
-      const headers = {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${user.access_token}`,
-      };
-
-      const response = await fetch(`/api/signals/${signalId}`, {
-        method: 'PATCH',
-        headers,
-        body: JSON.stringify({
-          active: !currentStatus
-        }),
-      });
-
-      if (response.ok) {
-        // Update the signal in local state
-        setSignals(prev => prev.map(signal => 
-          signal.id === signalId 
-            ? { ...signal, active: !currentStatus }
-            : signal
-        ));
-      } else {
-        showError('Failed to update signal status. Please try again.');
-      }
-    } catch (error) {
-      console.error('Error updating signal:', error);
-      showError('Error updating signal status. Please check your connection.');
-    }
+  const toggleSignalStatus = (signalId: string, currentStatus: boolean) => {
+    // React Query will handle optimistic updates automatically
+    updateSignalStatus.mutate({
+      signalId,
+      active: !currentStatus
+    });
   };
 
 
-  if (loading) {
+  // Handle loading state
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-white">
         <Header />
         <div className="container mx-auto px-4 py-8">
           <div className="text-center py-8">
             <div className="text-gray-500">Loading signals...</div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Handle error state
+  if (error) {
+    return (
+      <div className="min-h-screen bg-white">
+        <Header />
+        <div className="container mx-auto px-4 py-8">
+          <div className="text-center py-8">
+            <div className="text-red-500">Error loading signals: {error.message}</div>
+            <div className="mt-4">
+              <Link
+                href="/signals"
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors"
+              >
+                Retry
+              </Link>
+            </div>
           </div>
         </div>
       </div>
@@ -121,11 +70,7 @@ function SignalsPageContent() {
           </Link>
         </div>
 
-        {loading ? (
-          <div className="text-center py-8">
-            <div className="text-gray-500">Loading signals...</div>
-          </div>
-        ) : signals.length === 0 ? (
+        {!signals || signals.length === 0 ? (
           <div className="text-center py-12 bg-gray-50 rounded-lg">
             <h3 className="text-lg font-medium text-gray-900 mb-2">
               No signals yet

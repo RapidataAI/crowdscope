@@ -6,13 +6,12 @@ import Link from "next/link";
 import { AuthGuard } from "@/components/AuthGuard";
 import { Header } from "@/components/Header";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
-import { useGlobalNotifications } from "@/app/providers";
+import { useCreateSignal } from "@/hooks/useSignalsApi";
 
 function CreateSignalPageContent() {
   const { user } = useRequireAuth();
   const router = useRouter();
-  const { showError, showSuccess } = useGlobalNotifications();
-  const [loading, setLoading] = useState(false);
+  const createSignal = useCreateSignal();
   const [formData, setFormData] = useState({
     name: '',
     question: '',
@@ -29,44 +28,23 @@ function CreateSignalPageContent() {
     const cleanAnswerOptions = formData.answerOptions.filter(option => option.trim() !== '');
     
     if (cleanAnswerOptions.length < 2) {
-      showError('Please provide at least 2 answer options');
+      // Use React Query's built-in error handling
       return;
     }
 
-    setLoading(true);
-    
-    try {
-      const headers = {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${user.access_token}`,
-      };
-
-      const response = await fetch('/api/signals', {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({
-          name: formData.name,
-          question: formData.question,
-          answerOptions: cleanAnswerOptions,
-          voteCount: parseInt(formData.voteCount),
-          createdBy: user.profile.sub,
-          userEmail: user.profile.email
-        }),
-      });
-
-      if (response.ok) {
-        showSuccess('Signal created successfully!');
+    // Use React Query mutation
+    createSignal.mutate({
+      name: formData.name,
+      question: formData.question,
+      answerOptions: cleanAnswerOptions,
+      voteCount: parseInt(formData.voteCount),
+      createdBy: user.profile.sub,
+      userEmail: user.profile.email
+    }, {
+      onSuccess: () => {
         router.push('/signals');
-      } else {
-        const error = await response.json();
-        showError(`Error: ${error.error || 'Failed to create signal'}`);
       }
-    } catch (error) {
-      console.error('Error creating signal:', error);
-      showError('Failed to create signal. Please try again.');
-    } finally {
-      setLoading(false);
-    }
+    });
   };
 
   const addAnswerOption = () => {
@@ -195,10 +173,10 @@ function CreateSignalPageContent() {
             <div className="flex gap-4">
               <button
                 type="submit"
-                disabled={loading}
+                disabled={createSignal.isPending}
                 className="px-6 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white rounded-md transition-colors"
               >
-                {loading ? 'Creating...' : 'Create Signal'}
+                {createSignal.isPending ? 'Creating...' : 'Create Signal'}
               </button>
               <Link
                 href="/signals"

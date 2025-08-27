@@ -7,6 +7,9 @@ import { useNotifications } from "@/hooks/useNotifications"
 import { useConfirmation } from "@/hooks/useConfirmation"
 import { Notification } from "@/components/Notification"
 import { ConfirmationModal } from "@/components/ConfirmationModal"
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
+import { ReactQueryDevtools } from "@tanstack/react-query-devtools"
+import { createQueryClient } from "@/lib/queryClient"
 
 export const oidcConfig: UserManagerSettings = {
   authority: "https://auth.rapidata.ai",
@@ -81,6 +84,9 @@ function UIProvider({ children }: { children: ReactNode }) {
 
 export function Providers({ children }: { children: ReactNode }) {
   const router = useRouter()
+  
+  // Create QueryClient instance (only once)
+  const [queryClient] = React.useState(() => createQueryClient())
 
   const onSigninCallback = async (_user: User | void): Promise<void> => {
     window.history.replaceState({}, document.title, window.location.pathname)
@@ -92,15 +98,18 @@ export function Providers({ children }: { children: ReactNode }) {
   }
 
   return (
-    <UIProvider>
-      <AuthProvider
-        {...oidcConfig}
-        onSigninCallback={onSigninCallback}
-      >
-        <MonitorSession />
-        {children}
-      </AuthProvider>
-    </UIProvider>
+    <QueryClientProvider client={queryClient}>
+      <UIProvider>
+        <AuthProvider
+          {...oidcConfig}
+          onSigninCallback={onSigninCallback}
+        >
+          <MonitorSession />
+          {children}
+        </AuthProvider>
+      </UIProvider>
+      <ReactQueryDevtools initialIsOpen={false} />
+    </QueryClientProvider>
   )
 }
 
