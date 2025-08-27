@@ -82,7 +82,9 @@ export default function SignalsPage() {
 
       if (response.ok) {
         const result = await response.json();
-        alert(`Signal executed successfully! Rapidata Order ID: ${result.rapidataOrderId}`);
+        alert(`Signal executed successfully! Run ID: ${result.signalRunId}`);
+        // Refresh the signals data to show updated run count
+        fetchSignals();
       } else {
         const error = await response.json();
         alert(`Failed to execute signal: ${error.error}`);
@@ -172,12 +174,13 @@ export default function SignalsPage() {
         ) : (
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {signals.map((signal) => (
-              <div
+              <Link
                 key={signal.id}
-                className="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow"
+                href={`/signals/${signal.id}`}
+                className="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md hover:border-blue-200 transition-all cursor-pointer block"
               >
                 <div className="flex justify-between items-start mb-3">
-                  <h3 className="text-lg font-semibold text-gray-900">
+                  <h3 className="text-lg font-semibold text-gray-900 hover:text-blue-600 transition-colors">
                     {signal.name}
                   </h3>
                   <div className="flex items-center gap-2">
@@ -185,7 +188,10 @@ export default function SignalsPage() {
                       {signal.active ? 'Active' : 'Inactive'}
                     </span>
                     <button
-                      onClick={() => toggleSignalStatus(signal.id, signal.active)}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        toggleSignalStatus(signal.id, signal.active);
+                      }}
                       className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
                         signal.active ? 'bg-green-600' : 'bg-gray-300'
                       }`}
@@ -231,14 +237,17 @@ export default function SignalsPage() {
                   </div>
                   {signal.active && (
                     <button
-                      onClick={() => executeSignal(signal.id)}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        executeSignal(signal.id);
+                      }}
                       className="px-3 py-1 bg-blue-100 hover:bg-blue-200 text-blue-800 text-xs rounded-md transition-colors"
                     >
                       Execute Now
                     </button>
                   )}
                 </div>
-              </div>
+              </Link>
             ))}
           </div>
         )}

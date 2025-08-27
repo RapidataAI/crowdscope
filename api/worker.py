@@ -165,7 +165,8 @@ def create_rapidata_order_worker(signal_data):
             name=f"CrowdScope Signal: {signal_data['name']}",
             instruction=signal_data["question"],
             answer_options=signal_data["answer_options"],
-            datapoints=["../public/questionmark.jpg"]
+            datapoints=["../public/questionmark.jpg"],
+            responses_per_datapoint=signal_data["vote_count"]
         )
         
         # Start the order

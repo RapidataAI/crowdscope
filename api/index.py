@@ -183,6 +183,62 @@ def execute_signal():
         db.session.rollback()
         return jsonify({"error": "Failed to execute signal", "details": str(e)}), 500
 
+@app.route("/api/signals/<signal_id>/details", methods=["GET"])
+def get_signal_details(signal_id):
+    """Get detailed signal information including runs and responses"""
+    try:
+        # Get the signal
+        signal = db.session.get(Signal, signal_id)
+        if not signal:
+            return jsonify({"error": "Signal not found"}), 404
+        
+        # Get all completed runs with their responses
+        completed_runs = db.session.query(SignalRun).filter(
+            SignalRun.signalId == signal_id,
+            SignalRun.status == 'completed'
+        ).order_by(SignalRun.completedAt.asc()).all()
+        
+        # Build the response data
+        runs_data = []
+        for run in completed_runs:
+            # Get responses for this run
+            responses = db.session.query(Response).filter(
+                Response.signalRunId == run.id
+            ).all()
+            
+            # Calculate total votes and percentages
+            total_votes = sum(r.voteCount for r in responses)
+            response_data = {}
+            percentages = {}
+            
+            for response in responses:
+                response_data[response.option] = response.voteCount
+                percentages[response.option] = (response.voteCount / total_votes * 100) if total_votes > 0 else 0
+            
+            runs_data.append({
+                'id': run.id,
+                'completedAt': run.completedAt.isoformat() if run.completedAt else None,
+                'rapidataOrderId': run.rapidataOrderId,
+                'totalVotes': total_votes,
+                'responses': response_data,
+                'percentages': percentages
+            })
+        
+        # Return signal details with runs data
+        return jsonify({
+            'id': signal.id,
+            'name': signal.name,
+            'question': signal.question,
+            'answerOptions': signal.answerOptions,
+            'voteCount': signal.voteCount,
+            'active': signal.active,
+            'createdAt': signal.createdAt.isoformat(),
+            'runs': runs_data
+        })
+        
+    except Exception as e:
+        return jsonify({"error": "Failed to fetch signal details", "details": str(e)}), 500
+
 
 if __name__ == "__main__":
     app.run(debug=True, port=5328)
