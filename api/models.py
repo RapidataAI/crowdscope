@@ -58,8 +58,8 @@ class Response(db.Model):
     __tablename__ = 'responses'
     
     id = db.Column(db.String, primary_key=True, default=generate_uuid)
-    selectedOption = db.Column(db.String, nullable=False)  # Match Prisma column name
-    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    option = db.Column(db.String, nullable=False)  # The answer option (e.g., "Yes", "No", "Option 1")
+    voteCount = db.Column(db.Integer, nullable=False, default=0)  # Number of votes for this option
     
     # Foreign key
     signalRunId = db.Column(db.String, db.ForeignKey('signal_runs.id'), nullable=False)  # Match Prisma column name

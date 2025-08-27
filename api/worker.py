@@ -5,7 +5,7 @@ from typing import List
 from sqlalchemy import create_engine, func, text
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.exc import OperationalError
-from models import SignalRun, Signal
+from models import SignalRun, Signal, Response
 import os
 from dotenv import load_dotenv
 import uuid
@@ -207,20 +207,40 @@ def poll_rapidata_orders():
         for run in runs_to_check:
             try:
                 # Get the rapidata order status
-                order = rapi.order.get(run.rapidataOrderId)
-                order_status = order.status if hasattr(order, 'status') else 'unknown'
+                order = rapi.order.get_order_by_id(run.rapidataOrderId)
+                order_status = order.get_status()
                 
                 print(f"Run {run.id} - Rapidata order {run.rapidataOrderId} status: {order_status}")
 
-                if order_status == 'failed':
+                if order_status.lower() == 'failed':
                     run.status = 'failed'
                     run.errorMessage = 'Rapidata order failed during processing'
                     print(f"Failed run {run.id} - rapidata order failed during processing")
-                elif order_status == 'completed':
-                    # TODO: Extract results in the future
-                    run.status = 'completed'
-                    run.completedAt = datetime.utcnow()
-                    print(f"Completed run {run.id} - rapidata order completed")
+                elif order_status.lower() == 'completed':
+                    # Extract results and create Response records
+                    try:
+                        results = order.get_results()
+                        vote_counts = results['summary']  # e.g., {'Yes': 5, 'No': 3}
+                        
+                        print(f"Extracting results for run {run.id}: {vote_counts}")
+                        
+                        # Create Response records for each option
+                        for option, count in vote_counts.items():
+                            response = Response(
+                                signalRunId=run.id,
+                                option=option,
+                                voteCount=count
+                            )
+                            session.add(response)
+                        
+                        run.status = 'completed'
+                        run.completedAt = datetime.utcnow()
+                        print(f"Completed run {run.id} - extracted {len(vote_counts)} vote counts")
+                        
+                    except Exception as e:
+                        run.status = 'failed'
+                        run.errorMessage = f'Failed to extract results: {str(e)}'
+                        print(f"Failed to extract results for run {run.id}: {e}")
                 
                 session.commit()
                 
