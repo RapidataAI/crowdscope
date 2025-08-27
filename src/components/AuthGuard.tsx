@@ -23,11 +23,7 @@ export function AuthGuard({ children, fallback }: AuthGuardProps) {
   if (auth.isLoading) {
     return (
       fallback || (
-        <div className="min-h-screen bg-white flex items-center justify-center">
-          <div className="text-center">
-            <div className="text-gray-500">Loading...</div>
-          </div>
-        </div>
+        <div className="min-h-screen bg-white flex items-center justify-center"></div>
       )
     );
   }

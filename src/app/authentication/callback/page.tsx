@@ -13,7 +13,7 @@ export default function AuthCallback() {
   }, [auth.isLoading])
 
   if (auth.isLoading) {
-    return <div>Loading...</div>
+    return <></>
   }
 
   return <div>Authentication complete...</div>

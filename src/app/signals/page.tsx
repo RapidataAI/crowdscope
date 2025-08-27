@@ -18,28 +18,9 @@ function SignalsPageContent() {
     });
   };
 
+  console.log({signals, isLoading})
 
-  // Handle loading state
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-gray-50">
-        <Header />
-        <div className="container mx-auto px-6 py-12">
-          <div className="max-w-7xl mx-auto">
-            <div className="mb-4">
-              <h1 className="page-header text-balance">Your Signals</h1>
-              <p className="page-subtitle text-balance mb-0">
-                Track trends and insights through recurring crowd surveys
-              </p>
-            </div>
-            <div className="text-center py-8">
-              <div className="text-gray-500">Loading signals...</div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
+
 
   // Handle error state
   if (error) {
@@ -84,7 +65,44 @@ function SignalsPageContent() {
             </p>
           </div>
 
-          {!isLoading && (!signals || signals.length === 0) ? (
+          {isLoading || !signals ? (
+            <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+              {/* Skeleton Cards */}
+              {[1, 2, 3].map((index) => (
+                <div key={index} className="card animate-pulse">
+                  <div className="p-6">
+                    {/* Header with title and toggle */}
+                    <div className="flex justify-between items-start mb-4">
+                      <div className="h-6 bg-gray-200 rounded w-3/4"></div>
+                      <div className="h-6 w-11 bg-gray-200 rounded-full"></div>
+                    </div>
+                    
+                    {/* Question */}
+                    <div className="space-y-2 mb-6">
+                      <div className="h-4 bg-gray-200 rounded w-full"></div>
+                      <div className="h-4 bg-gray-200 rounded w-2/3"></div>
+                    </div>
+                    
+                    {/* Answer options */}
+                    <div className="space-y-3 mb-6">
+                      <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+                      <div className="flex flex-wrap gap-2 h-16 content-start">
+                        <div className="h-6 bg-gray-200 rounded-full w-16"></div>
+                        <div className="h-6 bg-gray-200 rounded-full w-20"></div>
+                        <div className="h-6 bg-gray-200 rounded-full w-14"></div>
+                      </div>
+                    </div>
+                    
+                    {/* Footer stats */}
+                    <div className="flex justify-between items-center text-sm border-t border-gray-200 pt-4">
+                      <div className="h-4 bg-gray-200 rounded w-24"></div>
+                      <div className="h-4 bg-gray-200 rounded w-16"></div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (signals.length === 0) ? (
             <div className="text-center py-20 card max-w-2xl mx-auto">
               <div className="w-16 h-16 bg-gradient-primary rounded-2xl mx-auto mb-6 flex items-center justify-center">
                 <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -138,7 +156,7 @@ function SignalsPageContent() {
                       </div>
                     </div>
                     
-                    <p className="text-gray-600 mb-6 leading-relaxed">
+                    <p className="text-gray-600 mb-6 leading-relaxed line-clamp-3">
                       {signal.question}
                     </p>
                     
@@ -146,7 +164,7 @@ function SignalsPageContent() {
                       <div className="text-sm font-medium text-gray-700">
                         Answer Options ({signal.answerOptions.length})
                       </div>
-                      <div className="flex flex-wrap gap-2">
+                      <div className="flex flex-wrap gap-2 h-16 content-start">
                         {signal.answerOptions.slice(0, 3).map((option, index) => (
                           <span
                             key={index}
