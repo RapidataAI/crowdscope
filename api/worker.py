@@ -1,0 +1,281 @@
+import threading
+import time
+from datetime import datetime, timedelta
+from typing import List
+from sqlalchemy import create_engine, func, text
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.exc import OperationalError
+from models import SignalRun, Signal
+import os
+from dotenv import load_dotenv
+import uuid
+
+# Load environment variables
+load_dotenv()
+
+# Database setup for worker
+DATABASE_URL = os.getenv('DATABASE_URL', 'postgresql://postgres:password@localhost:5432/crowdscope')
+engine = create_engine(DATABASE_URL)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+# Global worker instance ID for this process
+WORKER_ID = str(uuid.uuid4())
+
+def acquire_worker_lock():
+    """Acquire exclusive worker lock using PostgreSQL advisory lock"""
+    session = SessionLocal()
+    try:
+        # Use PostgreSQL advisory lock with a fixed key (hash of 'crowdscope_worker')
+        lock_key = 1234567890  # Fixed key for crowdscope worker
+        result = session.execute(text("SELECT pg_try_advisory_lock(:key)"), {"key": lock_key}).scalar()
+        if result:
+            print(f"Worker {WORKER_ID} acquired lock")
+            return session
+        else:
+            print(f"Worker {WORKER_ID} could not acquire lock - another worker is running")
+            session.close()
+            return None
+    except Exception as e:
+        print(f"Error acquiring worker lock: {e}")
+        session.close()
+        return None
+
+def release_worker_lock(session):
+    """Release the worker lock"""
+    try:
+        if session:
+            lock_key = 1234567890
+            session.execute(text("SELECT pg_advisory_unlock(:key)"), {"key": lock_key})
+            session.close()
+            print(f"Worker {WORKER_ID} released lock")
+    except Exception as e:
+        print(f"Error releasing worker lock: {e}")
+
+def check_signals_need_runs():
+    """Check for signals that need new runs (last run > 1 day ago or no runs)"""
+    session = SessionLocal()
+    try:
+        # Find signals that either have no runs or their latest run is older than 1 day
+        one_day_ago = datetime.utcnow() - timedelta(days=1)
+        
+        # Subquery to get the latest run for each signal
+        latest_run_subquery = session.query(
+            SignalRun.signalId,
+            func.max(SignalRun.startedAt).label('latest_run')
+        ).group_by(SignalRun.signalId).subquery()
+        
+        # Find signals that need new runs
+        signals_needing_runs = session.query(Signal).outerjoin(
+            latest_run_subquery, Signal.id == latest_run_subquery.c.signalId
+        ).filter(
+            # Either no previous runs or latest run is older than 1 day
+            (latest_run_subquery.c.latest_run == None) |
+            (latest_run_subquery.c.latest_run < one_day_ago)
+        ).filter(Signal.active == True).all()
+        
+        print(f"Found {len(signals_needing_runs)} signals that need new runs")
+        
+        # Create new runs for these signals
+        for signal in signals_needing_runs:
+            new_run = SignalRun(
+                signalId=signal.id,
+                status='created',
+                startedAt=datetime.utcnow()
+            )
+            session.add(new_run)
+            print(f"Created new run for signal {signal.id} ({signal.name})")
+        
+        session.commit()
+        
+    except Exception as e:
+        print(f"Error in check_signals_need_runs: {e}")
+        session.rollback()
+    finally:
+        session.close()
+
+def process_created_runs():
+    """Create rapidata orders for SignalRuns with 'created' status that don't have rapidata order IDs yet"""
+    session = SessionLocal()
+    try:
+        # Get all runs in 'created' status that don't have rapidata order IDs yet
+        created_runs = session.query(SignalRun).filter(
+            SignalRun.status == 'created',
+            SignalRun.rapidataOrderId.is_(None)
+        ).all()
+        
+        print(f"Found {len(created_runs)} runs to create rapidata orders for")
+        
+        for run in created_runs:
+            print(f"Processing run {run.id} for signal {run.signalId}")
+            try:
+                # Get the signal data
+                signal = session.query(Signal).filter(Signal.id == run.signalId).first()
+                if not signal:
+                    run.status = 'failed'
+                    run.errorMessage = 'Associated signal not found'
+                    session.commit()
+                    continue
+                
+                # Create Rapidata order
+                result = create_rapidata_order_worker({
+                    "signal_id": signal.id,
+                    "name": signal.name,
+                    "question": signal.question,
+                    "answer_options": signal.answerOptions,
+                    "vote_count": signal.voteCount
+                })
+                
+                if result["success"]:
+                    # Update run with rapidata order id but keep status as 'created'
+                    # Status will be updated to 'processing' by polling logic
+                    run.status = 'processing'
+                    run.rapidataOrderId = result["rapidata_order_id"]
+                    print(f"Successfully created rapidata order for run {run.id}, order: {result['rapidata_order_id']}")
+                else:
+                    # Update run with failure
+                    run.status = 'failed'
+                    run.errorMessage = result.get("details", result.get("error", "Unknown error"))
+                    print(f"Failed to create rapidata order for run {run.id}: {run.errorMessage}")
+                
+                session.commit()
+                
+            except Exception as e:
+                # Handle individual run failure
+                run.status = 'failed'
+                run.errorMessage = str(e)
+                session.commit()
+                print(f"Error processing run {run.id}: {e}")
+                
+    except Exception as e:
+        print(f"Error in process_created_runs: {e}")
+    finally:
+        session.close()
+
+def create_rapidata_order_worker(signal_data):
+    """Create a Rapidata order for a CrowdScope signal (worker version)"""
+    try:
+        # Import rapidata - should work since it's in the same environment
+        from rapidata import RapidataClient
+        
+        # Initialize Rapidata client
+        rapi = RapidataClient()
+        
+        # Create the survey order
+        order = rapi.order.create_classification_order(
+            name=f"CrowdScope Signal: {signal_data['name']}",
+            instruction=signal_data["question"],
+            answer_options=signal_data["answer_options"],
+            datapoints=["../public/questionmark.jpg"]
+        )
+        
+        # Start the order
+        order.run()
+
+        print(order.id)
+
+        return {
+            "success": True,
+            "rapidata_order_id": str(order.id) if hasattr(order, 'id') else "unknown",
+            "message": f"Successfully created Rapidata order for signal {signal_data['signal_id']}"
+        }
+        
+    except Exception as e:
+        import traceback
+        return {
+            "success": False,
+            "error": "Failed to create Rapidata order",
+            "details": f"{str(e)}\n{traceback.format_exc()}"
+        }
+
+def poll_rapidata_orders():
+    """Poll rapidata orders for runs that have rapidata order IDs but are still in 'created' status or are in 'processing' status"""
+    session = SessionLocal()
+    try:
+        # Import rapidata
+        from rapidata import RapidataClient
+        rapi = RapidataClient()
+        
+        # Get runs that have rapidata order IDs but are in 'created' status (need to be moved to processing)
+        # OR runs that are in 'processing' status (need status check)
+        runs_to_check = session.query(SignalRun).filter(
+            SignalRun.rapidataOrderId.isnot(None),
+            SignalRun.status.in_(['processing'])
+        ).all()
+        
+        print(f"Found {len(runs_to_check)} runs to poll rapidata orders for")
+        
+        for run in runs_to_check:
+            try:
+                # Get the rapidata order status
+                order = rapi.order.get(run.rapidataOrderId)
+                order_status = order.status if hasattr(order, 'status') else 'unknown'
+                
+                print(f"Run {run.id} - Rapidata order {run.rapidataOrderId} status: {order_status}")
+
+                if order_status == 'failed':
+                    run.status = 'failed'
+                    run.errorMessage = 'Rapidata order failed during processing'
+                    print(f"Failed run {run.id} - rapidata order failed during processing")
+                elif order_status == 'completed':
+                    # TODO: Extract results in the future
+                    run.status = 'completed'
+                    run.completedAt = datetime.utcnow()
+                    print(f"Completed run {run.id} - rapidata order completed")
+                
+                session.commit()
+                
+            except Exception as e:
+                print(f"Error polling rapidata order for run {run.id}: {e}")
+                # Don't fail the run here, as this might be a temporary network issue
+                
+    except Exception as e:
+        print(f"Error in poll_rapidata_orders: {e}")
+    finally:
+        session.close()
+
+def worker_loop():
+    """Main worker loop that runs every minute"""
+    print(f"Background worker {WORKER_ID} started")
+    
+    while True:
+        lock_session = None
+        try:
+            # Try to acquire exclusive lock
+            lock_session = acquire_worker_lock()
+            if not lock_session:
+                # Another worker is running, skip this cycle
+                time.sleep(60)
+                continue
+                
+            print("=== Worker cycle starting ===")
+            
+            # Step 1: Check if any signals need new runs (last run > 1 day ago or no runs)
+            print("Step 1: Checking signals that need new runs...")
+            check_signals_need_runs()
+            
+            # Step 2: Create rapidata orders for runs in 'created' state
+            print("Step 2: Processing created runs...")
+            process_created_runs()
+            
+            # Step 3: Poll rapidata orders for runs in 'created' or 'processing' state
+            print("Step 3: Polling rapidata orders...")
+            poll_rapidata_orders()
+            
+            print("=== Worker cycle completed ===")
+            
+        except Exception as e:
+            print(f"Worker error: {e}")
+        finally:
+            # Always release the lock
+            if lock_session:
+                release_worker_lock(lock_session)
+        
+        # Wait for 60 seconds before next check
+        time.sleep(60)
+
+def start_background_worker():
+    """Start the background worker in a separate thread"""
+    worker_thread = threading.Thread(target=worker_loop, daemon=True)
+    worker_thread.start()
+    print("Background worker thread started")
+    return worker_thread

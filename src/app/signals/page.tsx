@@ -68,6 +68,31 @@ export default function SignalsPage() {
     }
   };
 
+  const executeSignal = async (signalId: string) => {
+    try {
+      const response = await fetch('/api/signals/execute', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          signalId
+        }),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        alert(`Signal executed successfully! Rapidata Order ID: ${result.rapidataOrderId}`);
+      } else {
+        const error = await response.json();
+        alert(`Failed to execute signal: ${error.error}`);
+      }
+    } catch (error) {
+      console.error('Error executing signal:', error);
+      alert('Failed to execute signal');
+    }
+  };
+
   if (!user) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
@@ -199,9 +224,19 @@ export default function SignalsPage() {
                   </div>
                 </div>
                 
-                <div className="flex justify-between text-sm text-gray-500 border-t border-gray-100 pt-3">
-                  <span>{signal.voteCount} votes/day</span>
-                  <span>{signal._count.signalRuns} runs</span>
+                <div className="flex justify-between items-center text-sm border-t border-gray-100 pt-3">
+                  <div className="text-gray-500">
+                    <span className="mr-4">{signal.voteCount} votes/day</span>
+                    <span>{signal._count.signalRuns} runs</span>
+                  </div>
+                  {signal.active && (
+                    <button
+                      onClick={() => executeSignal(signal.id)}
+                      className="px-3 py-1 bg-blue-100 hover:bg-blue-200 text-blue-800 text-xs rounded-md transition-colors"
+                    >
+                      Execute Now
+                    </button>
+                  )}
                 </div>
               </div>
             ))}

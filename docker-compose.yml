@@ -1,4 +1,4 @@
-version: '3.8'
+version: "3.8"
 
 services:
   postgres:
@@ -15,3 +15,13 @@ services:
 
 volumes:
   postgres_data:
+
+networks:
+  default:
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.18.0.0/16
+    name: crowdscope
+    driver_opts:
+      com.docker.network.bridge.name: crowdscope
