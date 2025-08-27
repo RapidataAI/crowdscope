@@ -10,7 +10,7 @@ import { RunsList } from "@/components/RunsList";
 import { SignalActions } from "@/components/SignalActions";
 import { CountryFlags } from "@/components/CountryFlags";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
-import { useGlobalNotifications } from "@/app/providers";
+import { useGlobalNotifications, useGlobalConfirmation } from "@/app/providers";
 
 interface Response {
   [option: string]: number;
@@ -64,6 +64,7 @@ const generateColors = (count: number) => {
 function SignalDetailPageContent() {
   const { user } = useRequireAuth();
   const { showError, showSuccess } = useGlobalNotifications();
+  const { confirm } = useGlobalConfirmation();
   const params = useParams();
   const router = useRouter();
   const signalId = params.id as string;
@@ -138,7 +139,14 @@ function SignalDetailPageContent() {
   };
 
   const deleteRun = async (runId: string) => {
-    if (!confirm('Are you sure you want to delete this run? This action cannot be undone.')) {
+    const confirmed = await confirm({
+      title: 'Delete Run',
+      message: 'Are you sure you want to delete this run? This action cannot be undone.',
+      confirmText: 'Delete Run',
+      confirmVariant: 'danger'
+    });
+
+    if (!confirmed) {
       return;
     }
 
@@ -173,7 +181,14 @@ function SignalDetailPageContent() {
   };
 
   const deleteSignal = async () => {
-    if (!confirm('Are you sure you want to delete this signal? This will delete all runs and associated data. This action cannot be undone.')) {
+    const confirmed = await confirm({
+      title: 'Delete Signal',
+      message: 'Are you sure you want to delete this signal? This will delete all runs and associated data. This action cannot be undone.',
+      confirmText: 'Delete Signal',
+      confirmVariant: 'danger'
+    });
+
+    if (!confirmed) {
       return;
     }
 
@@ -247,11 +262,6 @@ function SignalDetailPageContent() {
         {/* Signal Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
-            <div className="flex items-center gap-3 mb-2">
-              <Link href="/signals" className="text-blue-600 hover:text-blue-700">
-                ← Back to Signals
-              </Link>
-            </div>
             <h1 className="text-3xl font-bold text-gray-900">{signal.name}</h1>
             <div className="flex items-center gap-4 mt-2">
               <span className={`px-2 py-1 text-xs rounded ${signal.active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>

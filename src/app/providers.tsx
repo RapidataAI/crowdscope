@@ -4,7 +4,9 @@ import React, { ReactNode, useEffect, useCallback, createContext, useContext } f
 import { AuthProvider, useAuth } from "react-oidc-context"
 import { useRouter, usePathname } from "next/navigation"
 import { useNotifications } from "@/hooks/useNotifications"
+import { useConfirmation } from "@/hooks/useConfirmation"
 import { Notification } from "@/components/Notification"
+import { ConfirmationModal } from "@/components/ConfirmationModal"
 
 export const oidcConfig: UserManagerSettings = {
   authority: "https://auth.rapidata.ai",
@@ -43,20 +45,36 @@ export const useGlobalNotifications = () => {
   return context;
 };
 
-function NotificationProvider({ children }: { children: ReactNode }) {
+// Create confirmation context
+const ConfirmationContext = createContext<ReturnType<typeof useConfirmation> | null>(null);
+
+export const useGlobalConfirmation = () => {
+  const context = useContext(ConfirmationContext);
+  if (!context) {
+    throw new Error('useGlobalConfirmation must be used within ConfirmationProvider');
+  }
+  return context;
+};
+
+function UIProvider({ children }: { children: ReactNode }) {
   const notifications = useNotifications();
+  const confirmation = useConfirmation();
 
   return (
     <NotificationContext.Provider value={notifications}>
-      {children}
-      {/* Render notifications */}
-      {notifications.notifications.map((notification) => (
-        <Notification
-          key={notification.id}
-          {...notification}
-          onClose={() => notifications.removeNotification(notification.id)}
-        />
-      ))}
+      <ConfirmationContext.Provider value={confirmation}>
+        {children}
+        {/* Render notifications */}
+        {notifications.notifications.map((notification) => (
+          <Notification
+            key={notification.id}
+            {...notification}
+            onClose={() => notifications.removeNotification(notification.id)}
+          />
+        ))}
+        {/* Render confirmation modal */}
+        <ConfirmationModal {...confirmation.confirmation} />
+      </ConfirmationContext.Provider>
     </NotificationContext.Provider>
   );
 }
@@ -74,7 +92,7 @@ export function Providers({ children }: { children: ReactNode }) {
   }
 
   return (
-    <NotificationProvider>
+    <UIProvider>
       <AuthProvider
         {...oidcConfig}
         onSigninCallback={onSigninCallback}
@@ -82,7 +100,7 @@ export function Providers({ children }: { children: ReactNode }) {
         <MonitorSession />
         {children}
       </AuthProvider>
-    </NotificationProvider>
+    </UIProvider>
   )
 }
 
@@ -135,7 +153,7 @@ function MonitorSession() {
 
   // Handle successful silent renew
   useEffect(() => {
-    return auth.events.addUserLoaded((user) => {
+    return auth.events.addUserLoaded(() => {
       console.log('User loaded/renewed successfully')
     })
   }, [auth.events])
