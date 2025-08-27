@@ -22,11 +22,19 @@ function SignalsPageContent() {
   // Handle loading state
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-white">
+      <div className="min-h-screen bg-gray-50">
         <Header />
-        <div className="container mx-auto px-4 py-8">
-          <div className="text-center py-8">
-            <div className="text-gray-500">Loading signals...</div>
+        <div className="container mx-auto px-6 py-12">
+          <div className="max-w-7xl mx-auto">
+            <div className="mb-4">
+              <h1 className="page-header text-balance">Your Signals</h1>
+              <p className="page-subtitle text-balance mb-0">
+                Track trends and insights through recurring crowd surveys
+              </p>
+            </div>
+            <div className="text-center py-8">
+              <div className="text-gray-500">Loading signals...</div>
+            </div>
           </div>
         </div>
       </div>
@@ -36,18 +44,26 @@ function SignalsPageContent() {
   // Handle error state
   if (error) {
     return (
-      <div className="min-h-screen bg-white">
+      <div className="min-h-screen bg-gray-50">
         <Header />
-        <div className="container mx-auto px-4 py-8">
-          <div className="text-center py-8">
-            <div className="text-red-500">Error loading signals: {error.message}</div>
-            <div className="mt-4">
-              <Link
-                href="/signals"
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors"
-              >
-                Retry
-              </Link>
+        <div className="container mx-auto px-6 py-12">
+          <div className="max-w-7xl mx-auto">
+            <div className="mb-4">
+              <h1 className="page-header text-balance">Your Signals</h1>
+              <p className="page-subtitle text-balance mb-0">
+                Track trends and insights through recurring crowd surveys
+              </p>
+            </div>
+            <div className="text-center py-8">
+              <div className="text-red-500">Error loading signals: {error.message}</div>
+              <div className="mt-4">
+                <Link
+                  href="/signals"
+                  className="btn-primary"
+                >
+                  Retry
+                </Link>
+              </div>
             </div>
           </div>
         </div>
@@ -56,106 +72,137 @@ function SignalsPageContent() {
   }
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-gray-50">
       <Header />
 
-      <div className="container mx-auto px-4 py-8">
-        <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Your Signals</h1>
-          <Link
-            href="/signals/create"
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors"
-          >
-            Create New Signal
-          </Link>
-        </div>
-
-        {!signals || signals.length === 0 ? (
-          <div className="text-center py-12 bg-gray-50 rounded-lg">
-            <h3 className="text-lg font-medium text-gray-900 mb-2">
-              No signals yet
-            </h3>
-            <p className="text-gray-600 mb-4">
-              Create your first signal to start tracking crowd insights.
+      <div className="container mx-auto px-6 py-12">
+        <div className="max-w-7xl mx-auto">
+          <div className="mb-4">
+            <h1 className="page-header text-balance">Your Signals</h1>
+            <p className="page-subtitle text-balance mb-0">
+              Track trends and insights through recurring crowd surveys
             </p>
-            <Link
-              href="/signals/create"
-              className="inline-flex px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors"
-            >
-              Create Your First Signal
-            </Link>
           </div>
-        ) : (
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {signals.map((signal) => (
+
+          {!isLoading && (!signals || signals.length === 0) ? (
+            <div className="text-center py-20 card max-w-2xl mx-auto">
+              <div className="w-16 h-16 bg-gradient-primary rounded-2xl mx-auto mb-6 flex items-center justify-center">
+                <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
+              </div>
+              <h3 className="section-header mb-3 text-balance">
+                No signals yet
+              </h3>
+              <p className="text-gray-600 mb-8 text-lg max-w-md mx-auto">
+                Create your first signal to start tracking crowd insights and understanding population trends.
+              </p>
               <Link
-                key={signal.id}
-                href={`/signals/${signal.id}`}
-                className="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md hover:border-blue-200 transition-all cursor-pointer block"
+                href="/signals/create"
+                className="btn-primary"
               >
-                <div className="flex justify-between items-start mb-3">
-                  <h3 className="text-lg font-semibold text-gray-900 hover:text-blue-600 transition-colors">
-                    {signal.name}
+                Create Your First Signal
+              </Link>
+            </div>
+          ) : (
+            <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+              {/* Existing Signals */}
+              {signals.map((signal, index) => (
+                <Link
+                  key={signal.id}
+                  href={`/signals/${signal.id}`}
+                  className="card-interactive group"
+                >
+                  <div className="p-6 flex flex-col h-full">
+                    <div className="flex justify-between items-start mb-4">
+                      <h3 className="text-xl font-semibold text-gray-900 group-hover:text-blue-600 transition-colors duration-200">
+                        {signal.name}
+                      </h3>
+                      <div className="relative">
+                        <button
+                          onClick={(e) => {
+                            e.preventDefault();
+                            toggleSignalStatus(signal.id, signal.active);
+                          }}
+                          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-all duration-200 ${
+                            signal.active ? 'bg-green-500' : 'bg-gray-300'
+                          } hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 group/toggle`}
+                          title={signal.active ? 'Active - Click to deactivate' : 'Inactive - Click to activate'}
+                        >
+                          <span
+                            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-200 shadow-sm ${
+                              signal.active ? 'translate-x-6' : 'translate-x-1'
+                            }`}
+                          />
+                        </button>
+                      </div>
+                    </div>
+                    
+                    <p className="text-gray-600 mb-6 leading-relaxed">
+                      {signal.question}
+                    </p>
+                    
+                    <div className="space-y-3 mb-6 flex-grow">
+                      <div className="text-sm font-medium text-gray-700">
+                        Answer Options ({signal.answerOptions.length})
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {signal.answerOptions.slice(0, 3).map((option, index) => (
+                          <span
+                            key={index}
+                            className="badge-neutral text-xs px-3 py-1.5"
+                          >
+                            {option}
+                          </span>
+                        ))}
+                        {signal.answerOptions.length > 3 && (
+                          <span className="badge-neutral text-xs px-3 py-1.5">
+                            +{signal.answerOptions.length - 3} more
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    
+                    <div className="flex justify-between items-center text-sm border-t border-gray-200 pt-4 mt-auto">
+                      <div className="flex items-center text-gray-600">
+                        <svg className="w-4 h-4 mr-2 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        {signal.voteCount} votes/day
+                      </div>
+                      <div className="flex items-center text-gray-600 font-medium">
+                        <svg className="w-4 h-4 mr-2 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                        </svg>
+                        {signal._count.signalRuns} runs
+                      </div>
+                    </div>
+                  </div>
+                </Link>
+              ))}
+              
+              {/* Create New Signal Card */}
+              <Link
+                href="/signals/create"
+                className="card-interactive group border border-gray-200 hover:border-blue-300 bg-gray-50/50 hover:bg-blue-50/50"
+              >
+                <div className="p-6 flex flex-col h-full items-center justify-center text-center">
+                  <div className="w-12 h-12 bg-blue-100 rounded-xl mb-4 flex items-center justify-center group-hover:bg-blue-200 transition-colors duration-200">
+                    <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                    </svg>
+                  </div>
+                  <h3 className="text-lg font-medium text-gray-600 group-hover:text-blue-600 transition-colors duration-200 mb-1">
+                    Add New Signal
                   </h3>
-                  <div className="flex items-center gap-2">
-                    <span className={`text-xs ${signal.active ? 'text-green-600' : 'text-gray-500'}`}>
-                      {signal.active ? 'Active' : 'Inactive'}
-                    </span>
-                    <button
-                      onClick={(e) => {
-                        e.preventDefault();
-                        toggleSignalStatus(signal.id, signal.active);
-                      }}
-                      className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
-                        signal.active ? 'bg-green-600' : 'bg-gray-300'
-                      }`}
-                    >
-                      <span
-                        className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${
-                          signal.active ? 'translate-x-5' : 'translate-x-1'
-                        }`}
-                      />
-                    </button>
-                  </div>
-                </div>
-                
-                <p className="text-gray-600 text-sm mb-4 line-clamp-2">
-                  {signal.question}
-                </p>
-                
-                <div className="space-y-2 mb-4">
-                  <div className="text-sm text-gray-500">
-                    Answer Options ({signal.answerOptions.length}):
-                  </div>
-                  <div className="flex flex-wrap gap-1">
-                    {signal.answerOptions.slice(0, 3).map((option, index) => (
-                      <span
-                        key={index}
-                        className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded"
-                      >
-                        {option}
-                      </span>
-                    ))}
-                    {signal.answerOptions.length > 3 && (
-                      <span className="px-2 py-1 bg-gray-100 text-gray-500 text-xs rounded">
-                        +{signal.answerOptions.length - 3} more
-                      </span>
-                    )}
-                  </div>
-                </div>
-                
-                <div className="flex justify-between items-center text-sm border-t border-gray-100 pt-3">
-                  <div className="text-gray-500">
-                    {signal.voteCount} votes/day
-                  </div>
-                  <div className="text-gray-500">
-                    {signal._count.signalRuns} runs
-                  </div>
+                  <p className="text-gray-500 text-xs">
+                    Create a new survey
+                  </p>
                 </div>
               </Link>
-            ))}
-          </div>
-        )}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
