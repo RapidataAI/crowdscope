@@ -140,8 +140,8 @@ export default function SignalDetailPage() {
       return (
         <div className="bg-white border border-gray-300 rounded-lg p-3 shadow-lg">
           <p className="font-medium text-gray-900">Run #{label}</p>
-          <p className="text-sm text-gray-600 mb-2">{date}</p>
-          <p className="text-sm text-gray-600 mb-2">Total: {data.totalVotes} votes</p>
+          <p className="text-sm text-gray-700 mb-2">{date}</p>
+          <p className="text-sm text-gray-700 mb-2">Total: {data.totalVotes} votes</p>
           <div className="space-y-1">
             {signal?.answerOptions.map((option, index) => (
               <div key={option} className="flex items-center justify-between text-sm">
@@ -150,11 +150,11 @@ export default function SignalDetailPage() {
                     className="w-3 h-3 rounded mr-2" 
                     style={{ backgroundColor: colors[index] }}
                   ></div>
-                  <span>{option}:</span>
+                  <span className="text-gray-900">{option}:</span>
                 </div>
                 <div className="ml-2">
-                  <span className="font-medium">{data.responses[option] || 0}</span>
-                  <span className="text-gray-500 ml-1">
+                  <span className="font-medium text-gray-900">{data.responses[option] || 0}</span>
+                  <span className="text-gray-700 ml-1">
                     ({(data[option] || 0).toFixed(1)}%)
                   </span>
                 </div>

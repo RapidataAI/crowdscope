@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 from models import db, User, Signal, SignalRun, Response
 from datetime import datetime
 from sqlalchemy import func
-from worker import start_background_worker
+from worker import start_background_worker, trigger_worker_immediately
 
 # Load environment variables
 load_dotenv()
@@ -98,6 +98,8 @@ def create_signal():
         db.session.add(signal)
         db.session.commit()
         
+        trigger_worker_immediately()
+        
         return jsonify({
             'id': signal.id,
             'name': signal.name,
@@ -172,11 +174,14 @@ def execute_signal():
         db.session.add(signal_run)
         db.session.commit()
         
+        # Trigger the worker immediately to process this new run
+        trigger_worker_immediately()
+        
         return jsonify({
             "success": True,
             "signalRunId": signal_run.id,
             "status": signal_run.status,
-            "message": "Signal run created, worker will process it shortly"
+            "message": "Signal run created and worker triggered immediately"
         }), 201
         
     except Exception as e:

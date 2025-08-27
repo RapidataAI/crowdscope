@@ -51,6 +51,12 @@ def release_worker_lock(session):
     except Exception as e:
         print(f"Error releasing worker lock: {e}")
 
+def trigger_worker_immediately():
+    """Trigger the worker to run immediately"""
+    print("Worker triggered immediately - running cycle now")
+    # Run the worker cycle directly instead of using threading events
+    run_worker_cycle()
+
 def check_signals_need_runs():
     """Check for signals that need new runs (last run > 1 day ago or no runs)"""
     session = SessionLocal()
@@ -254,45 +260,56 @@ def poll_rapidata_orders():
     finally:
         session.close()
 
+def run_worker_cycle():
+    """Run a single worker cycle"""
+    lock_session = None
+    try:
+        # Try to acquire exclusive lock
+        lock_session = acquire_worker_lock()
+        if not lock_session:
+            print(f"Worker {WORKER_ID} could not acquire lock - another worker is running")
+            return False
+            
+        print("=== Worker cycle starting ===")
+        
+        # Step 1: Check if any signals need new runs (last run > 1 day ago or no runs)
+        print("Step 1: Checking signals that need new runs...")
+        check_signals_need_runs()
+        
+        # Step 2: Create rapidata orders for runs in 'created' state
+        print("Step 2: Processing created runs...")
+        process_created_runs()
+        
+        # Step 3: Poll rapidata orders for runs in 'created' or 'processing' state
+        print("Step 3: Polling rapidata orders...")
+        poll_rapidata_orders()
+        
+        print("=== Worker cycle completed ===")
+        return True
+        
+    except Exception as e:
+        print(f"Worker error: {e}")
+        return False
+    finally:
+        # Always release the lock
+        if lock_session:
+            release_worker_lock(lock_session)
+
 def worker_loop():
     """Main worker loop that runs every minute"""
     print(f"Background worker {WORKER_ID} started")
     
     while True:
-        lock_session = None
         try:
-            # Try to acquire exclusive lock
-            lock_session = acquire_worker_lock()
-            if not lock_session:
-                # Another worker is running, skip this cycle
-                time.sleep(60)
-                continue
-                
-            print("=== Worker cycle starting ===")
+            # Wait 60 seconds between cycles
+            time.sleep(60)
             
-            # Step 1: Check if any signals need new runs (last run > 1 day ago or no runs)
-            print("Step 1: Checking signals that need new runs...")
-            check_signals_need_runs()
-            
-            # Step 2: Create rapidata orders for runs in 'created' state
-            print("Step 2: Processing created runs...")
-            process_created_runs()
-            
-            # Step 3: Poll rapidata orders for runs in 'created' or 'processing' state
-            print("Step 3: Polling rapidata orders...")
-            poll_rapidata_orders()
-            
-            print("=== Worker cycle completed ===")
+            # Run the worker cycle
+            run_worker_cycle()
             
         except Exception as e:
-            print(f"Worker error: {e}")
-        finally:
-            # Always release the lock
-            if lock_session:
-                release_worker_lock(lock_session)
-        
-        # Wait for 60 seconds before next check
-        time.sleep(60)
+            print(f"Worker loop error: {e}")
+            time.sleep(5)  # Brief pause on error before retrying
 
 def start_background_worker():
     """Start the background worker in a separate thread"""
