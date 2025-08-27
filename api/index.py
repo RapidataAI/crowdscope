@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 from models import db, User, Signal, SignalRun, Response
 from datetime import datetime
 from sqlalchemy import func
-from worker import start_background_worker, trigger_worker_immediately
+from worker import start_background_worker, trigger_worker_immediately, run_worker_cycle
 from auth import init_auth, token_required, get_current_user_id, get_current_user_email, generate_client_credentials, get_current_access_token
 
 # Load environment variables
@@ -33,8 +33,10 @@ with app.app_context():
     except Exception as e:
         print(f"Database error: {e}")
 
-# Start background worker (protected by database lock)
-start_background_worker()
+# Only start background worker in local development, not on Vercel
+if os.getenv('VERCEL') != '1':
+    # Start background worker (protected by database lock)
+    start_background_worker()
 
 def ensure_user_has_credentials(user, access_token):
     """Ensure user has Rapidata client credentials, generate if missing"""
@@ -311,6 +313,20 @@ def get_signal_details(signal_id):
     except Exception as e:
         return jsonify({"error": "Failed to fetch signal details", "details": str(e)}), 500
 
+# Worker endpoint for Vercel Cron Jobs
+@app.route("/api/worker", methods=["GET", "POST"])
+def worker():
+    """Worker endpoint that runs the background tasks"""
+    try:
+        print("Worker endpoint triggered")
+        success = run_worker_cycle()
+        if success:
+            return jsonify({"success": True, "message": "Worker cycle completed"})
+        else:
+            return jsonify({"success": False, "message": "Worker cycle failed"}), 500
+    except Exception as e:
+        print(f"Worker endpoint error: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
 
 if __name__ == "__main__":
     app.run(debug=True, port=5328)

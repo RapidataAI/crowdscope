@@ -19,7 +19,7 @@ engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 # Global worker instance ID for this process
-WORKER_ID = str(uuid.uuid4())
+WORKER_ID = 'global-worker'
 
 def acquire_worker_lock():
     """Acquire exclusive worker lock using PostgreSQL advisory lock"""
