@@ -217,8 +217,10 @@ export default function SignalsPage() {
                 
                 <div className="flex justify-between items-center text-sm border-t border-gray-100 pt-3">
                   <div className="text-gray-500">
-                    <span className="mr-4">{signal.voteCount} votes/day</span>
-                    <span>{signal._count.signalRuns} runs</span>
+                    {signal.voteCount} votes/day
+                  </div>
+                  <div className="text-gray-500">
+                    {signal._count.signalRuns} runs
                   </div>
                 </div>
               </Link>
