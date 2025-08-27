@@ -85,7 +85,7 @@ export const createAuthenticatedMutationFn = (getUser: () => User | null, signin
   }: { 
     url: string; 
     method?: string; 
-    body?: any; 
+    body?: unknown; 
     signal?: AbortSignal;
   }) => {
     const user = getUser();

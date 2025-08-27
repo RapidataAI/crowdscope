@@ -5,6 +5,20 @@ import { AuthGuard } from "@/components/AuthGuard";
 import { Header } from "@/components/Header";
 import { useSignals, useUpdateSignalStatus } from "@/hooks/useSignalsApi";
 
+// Import Signal type for TypeScript
+interface Signal {
+  id: string;
+  name: string;
+  question: string;
+  answerOptions: string[];
+  voteCount: number;
+  active: boolean;
+  createdAt: string;
+  _count: {
+    signalRuns: number;
+  };
+}
+
 function SignalsPageContent() {
   // Use React Query hooks instead of manual state management
   const { data: signals, isLoading, error } = useSignals();
@@ -102,25 +116,10 @@ function SignalsPageContent() {
                 </div>
               ))}
             </div>
-          ) : (signals.length === 0) ? (
-            <div className="text-center py-20 card max-w-2xl mx-auto">
-              <h3 className="section-header mb-3 text-balance">
-                No signals yet
-              </h3>
-              <p className="text-gray-600 mb-8 text-lg max-w-md mx-auto">
-                Create your first signal to start tracking crowd insights and understanding population trends.
-              </p>
-              <Link
-                href="/signals/create"
-                className="btn-primary"
-              >
-                Create Your First Signal
-              </Link>
-            </div>
           ) : (
             <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
               {/* Existing Signals */}
-              {signals.map((signal, index) => (
+              {signals.map((signal: Signal) => (
                 <Link
                   key={signal.id}
                   href={`/signals/${signal.id}`}

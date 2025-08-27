@@ -39,7 +39,7 @@ function CreateSignalPageContent() {
       answerOptions: cleanAnswerOptions,
       voteCount: parseInt(formData.voteCount),
       createdBy: user.profile.sub,
-      userEmail: user.profile.email
+      userEmail: user.profile.email || ''
     }, {
       onSuccess: () => {
         router.push('/signals');

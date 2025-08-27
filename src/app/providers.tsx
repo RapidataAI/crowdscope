@@ -7,7 +7,7 @@ import { useNotifications } from "@/hooks/useNotifications"
 import { useConfirmation } from "@/hooks/useConfirmation"
 import { Notification } from "@/components/Notification"
 import { ConfirmationModal } from "@/components/ConfirmationModal"
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
+import { QueryClientProvider } from "@tanstack/react-query"
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools"
 import { createQueryClient } from "@/lib/queryClient"
 

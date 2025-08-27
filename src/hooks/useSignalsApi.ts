@@ -56,7 +56,7 @@ interface CreateSignalData {
 export const signalKeys = {
   all: ['signals'] as const,
   lists: () => [...signalKeys.all, 'list'] as const,
-  list: (filters: Record<string, any> = {}) => [...signalKeys.lists(), filters] as const,
+  list: (filters: Record<string, unknown> = {}) => [...signalKeys.lists(), filters] as const,
   details: () => [...signalKeys.all, 'detail'] as const,
   detail: (id: string) => [...signalKeys.details(), id] as const,
 };
@@ -66,13 +66,19 @@ const useAuthenticatedApi = () => {
   const auth = useAuth();
   
   const queryFn = createAuthenticatedQueryFn(
-    () => auth.user,
-    () => auth.signinSilent()
+    () => auth.user || null,
+    async () => {
+      const result = await auth.signinSilent();
+      return result || undefined;
+    }
   );
   
   const mutationFn = createAuthenticatedMutationFn(
-    () => auth.user,
-    () => auth.signinSilent()
+    () => auth.user || null,
+    async () => {
+      const result = await auth.signinSilent();
+      return result || undefined;
+    }
   );
   
   return { queryFn, mutationFn };
@@ -129,7 +135,7 @@ export const useCreateSignal = () => {
       method: 'POST',
       body: data,
     }),
-    onSuccess: (data, variables) => {
+    onSuccess: () => {
       showSuccess('Signal created successfully!');
       // Invalidate signals list to refetch
       queryClient.invalidateQueries({ queryKey: signalKeys.lists() });
