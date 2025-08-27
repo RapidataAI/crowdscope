@@ -19,6 +19,7 @@
               flask
               sqlalchemy
               flask-sqlalchemy
+              flask-migrate
               flask-cors
               pandas
               numpy

@@ -141,7 +141,8 @@ def process_created_runs():
                     "name": signal.name,
                     "question": signal.question,
                     "answer_options": signal.answerOptions,
-                    "vote_count": signal.voteCount
+                    "vote_count": signal.voteCount,
+                    "countries": signal.countries
                 }, user_credentials)
                 
                 if result["success"]:
@@ -174,7 +175,7 @@ def create_rapidata_order_worker(signal_data, user_credentials):
     """Create a Rapidata order for a CrowdScope signal (worker version)"""
     try:
         # Import rapidata - should work since it's in the same environment
-        from rapidata import RapidataClient
+        from rapidata import RapidataClient, CountryFilter
         
         # Initialize Rapidata client with user's credentials
         rapi = RapidataClient(
@@ -183,13 +184,19 @@ def create_rapidata_order_worker(signal_data, user_credentials):
         )
         
         # Create the survey order
-        order = rapi.order.create_classification_order(
-            name=f"CrowdScope Signal: {signal_data['name']}",
-            instruction=signal_data["question"],
-            answer_options=signal_data["answer_options"],
-            datapoints=["../public/questionmark.jpg"],
-            responses_per_datapoint=signal_data["vote_count"]
-        )
+        order_kwargs = {
+            "name": f"CrowdScope Signal: {signal_data['name']}",
+            "instruction": signal_data["question"],
+            "answer_options": signal_data["answer_options"],
+            "datapoints": ["../public/questionmark.jpg"],
+            "responses_per_datapoint": signal_data["vote_count"]
+        }
+        
+        # Add country filter if specified
+        if signal_data.get("countries"):
+            order_kwargs["filters"] = [CountryFilter(signal_data["countries"])]
+        
+        order = rapi.order.create_classification_order(**order_kwargs)
         
         # Start the order
         order.run()

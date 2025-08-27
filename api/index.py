@@ -8,6 +8,7 @@ from datetime import datetime
 from sqlalchemy import func
 from worker import start_background_worker, trigger_worker_immediately, run_worker_cycle
 from auth import init_auth, token_required, get_current_user_id, get_current_user_email, generate_client_credentials, get_current_access_token
+from flask_migrate import Migrate
 
 # Load environment variables
 load_dotenv()
@@ -19,19 +20,24 @@ CORS(app)
 app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'postgresql://postgres:password@localhost:5432/crowdscope')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-# Initialize database and auth
+# Initialize database, migrations, and auth
 db.init_app(app)
+migrate = Migrate(app, db)
 init_auth()
 
-#Create tables and start background worker
-with app.app_context():
+# Auto-run migrations on startup
+def run_migrations():
+    """Automatically run database migrations on startup"""
     try:
-        # Drop and recreate tables to add new columns
-        db.drop_all()
-        db.create_all()
-        print("Database tables recreated successfully!")
+        from flask_migrate import upgrade
+        with app.app_context():
+            upgrade()
+            print("Database migrations applied successfully!")
     except Exception as e:
-        print(f"Database error: {e}")
+        print(f"Migration error: {e}")
+
+# Run migrations on startup
+run_migrations()
 
 # Only start background worker in local development, not on Vercel
 if os.getenv('VERCEL') != '1':
@@ -83,6 +89,7 @@ def get_signals():
                 'question': signal.question,
                 'answerOptions': signal.answerOptions,  # Use model's camelCase attribute
                 'voteCount': signal.voteCount,          # Use model's camelCase attribute
+                'countries': signal.countries,          # Array of country codes
                 'active': signal.active,
                 'createdAt': signal.createdAt.isoformat(),  # Use model's camelCase attribute
                 '_count': {
@@ -134,6 +141,7 @@ def create_signal():
             question=data["question"],
             answerOptions=data["answerOptions"],  # Use camelCase column name
             voteCount=int(data["voteCount"]),     # Use camelCase column name
+            countries=data.get("countries"),      # Optional array of country codes
             createdBy=user_id                     # Use authenticated user ID
         )
         
@@ -148,6 +156,7 @@ def create_signal():
             'question': signal.question,
             'answerOptions': signal.answerOptions,  # Use model's camelCase attribute
             'voteCount': signal.voteCount,          # Use model's camelCase attribute
+            'countries': signal.countries,          # Array of country codes
             'active': signal.active,
             'createdAt': signal.createdAt.isoformat()  # Use model's camelCase attribute
         }), 201
@@ -192,6 +201,7 @@ def update_signal(signal_id):
             'question': signal.question,
             'answerOptions': signal.answerOptions,  # Use model's camelCase attribute
             'voteCount': signal.voteCount,          # Use model's camelCase attribute
+            'countries': signal.countries,          # Array of country codes
             'active': signal.active,
             'createdAt': signal.createdAt.isoformat()  # Use model's camelCase attribute
         })
@@ -266,11 +276,10 @@ def get_signal_details(signal_id):
         if signal.createdBy != user_id:
             return jsonify({"error": "Access denied"}), 403
         
-        # Get all completed runs with their responses
+        # Get all runs with their responses (including non-completed ones)
         completed_runs = db.session.query(SignalRun).filter(
-            SignalRun.signalId == signal_id,
-            SignalRun.status == 'completed'
-        ).order_by(SignalRun.completedAt.asc()).all()
+            SignalRun.signalId == signal_id
+        ).order_by(SignalRun.startedAt.desc()).all()
         
         # Build the response data
         runs_data = []
@@ -291,6 +300,8 @@ def get_signal_details(signal_id):
             
             runs_data.append({
                 'id': run.id,
+                'status': run.status,
+                'startedAt': run.startedAt.isoformat() if run.startedAt else None,
                 'completedAt': run.completedAt.isoformat() if run.completedAt else None,
                 'rapidataOrderId': run.rapidataOrderId,
                 'totalVotes': total_votes,
@@ -305,6 +316,7 @@ def get_signal_details(signal_id):
             'question': signal.question,
             'answerOptions': signal.answerOptions,
             'voteCount': signal.voteCount,
+            'countries': signal.countries,
             'active': signal.active,
             'createdAt': signal.createdAt.isoformat(),
             'runs': runs_data

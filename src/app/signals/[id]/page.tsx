@@ -17,6 +17,8 @@ interface Percentages {
 
 interface Run {
   id: string;
+  status?: string;
+  startedAt: string;
   completedAt: string;
   rapidataOrderId: string;
   totalVotes: number;
@@ -32,6 +34,7 @@ interface SignalDetail {
   voteCount: number;
   active: boolean;
   createdAt: string;
+  countries?: string[];
   runs: Run[];
 }
 
@@ -51,6 +54,25 @@ const generateColors = (count: number) => {
   ];
   
   return colors.slice(0, count);
+};
+
+// Country flags component
+const CountryFlags = ({ countries }: { countries: string[] }) => {
+  if (!countries || countries.length === 0) return null;
+  
+  return (
+    <div className="flex flex-wrap gap-1">
+      {countries.map((countryCode) => (
+        <img
+          key={countryCode}
+          src={`https://flagcdn.com/24x18/${countryCode.toLowerCase()}.png`}
+          alt={`${countryCode} flag`}
+          className="border border-gray-200 rounded-sm"
+          title={countryCode.toUpperCase()}
+        />
+      ))}
+    </div>
+  );
 };
 
 export default function SignalDetailPage() {
@@ -292,6 +314,19 @@ export default function SignalDetailPage() {
           </div>
         </div>
 
+        {/* Country Filter */}
+        {signal.countries && signal.countries.length > 0 && (
+          <div className="bg-gray-50 rounded-lg p-6 mb-8">
+            <h2 className="text-lg font-semibold text-gray-900 mb-3">Country Filter</h2>
+            <div className="flex flex-col gap-2">
+              <p className="text-sm text-gray-600">
+                This signal is filtered to responses from the following {signal.countries.length === 1 ? 'country' : 'countries'}:
+              </p>
+              <CountryFlags countries={signal.countries} />
+            </div>
+          </div>
+        )}
+
         {/* Chart */}
         {signal.runs.length > 0 ? (
           <div className="bg-white border border-gray-200 rounded-lg p-6">
@@ -343,6 +378,63 @@ export default function SignalDetailPage() {
                 Execute Signal
               </button>
             )}
+          </div>
+        )}
+
+        {/* Runs History */}
+        {signal.runs.length > 0 && (
+          <div className="bg-white border border-gray-200 rounded-lg p-6 mt-8">
+            <h2 className="text-xl font-semibold text-gray-900 mb-6">Execution History</h2>
+            <div className="space-y-4">
+              {signal.runs.map((run, index) => (
+                <div key={run.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                  <div className="flex items-center gap-4">
+                    <div className="flex items-center justify-center w-8 h-8 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">
+                      #{index + 1}
+                    </div>
+                    <div>
+                      <div className="font-medium text-gray-900">
+                        Run {run.id.slice(0, 8)}...
+                        <span className={`ml-2 px-2 py-1 text-xs rounded ${
+                          run.status === 'completed' ? 'bg-green-100 text-green-800' :
+                          run.status === 'processing' ? 'bg-yellow-100 text-yellow-800' :
+                          run.status === 'failed' ? 'bg-red-100 text-red-800' :
+                          'bg-gray-100 text-gray-800'
+                        }`}>
+                          {run.status || 'unknown'}
+                        </span>
+                      </div>
+                      <div className="text-sm text-gray-600">
+                        Started: {new Date(run.startedAt).toLocaleString()}
+                      </div>
+                      {run.completedAt && (
+                        <div className="text-sm text-gray-600">
+                          Completed: {new Date(run.completedAt).toLocaleString()}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <div className="text-right">
+                      <div className="font-medium text-gray-900">{run.totalVotes} votes</div>
+                      {run.completedAt && (
+                        <div className="text-sm text-gray-600">
+                          Duration: {Math.round((new Date(run.completedAt).getTime() - new Date(run.startedAt).getTime()) / 1000 / 60)} min
+                        </div>
+                      )}
+                    </div>
+                    <a
+                      href={`https://app.rapidata.ai/order/detail/${run.rapidataOrderId}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-3 py-1 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors"
+                    >
+                      View Details
+                    </a>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </div>
