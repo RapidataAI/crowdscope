@@ -79,7 +79,7 @@ export default function Home() {
             
             <p className="text-lg leading-relaxed">
               Whether you want to understand Bitcoin sentiment, political preferences, or consumer behavior, 
-              CrowdScope collects authentic responses from real people and visualizes trends you won't find anywhere else.
+              CrowdScope collects authentic responses from real people and visualizes trends you won&apos;t find anywhere else.
             </p>
 
             <p className="text-lg leading-relaxed">

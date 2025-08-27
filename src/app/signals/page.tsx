@@ -1,7 +1,7 @@
 'use client';
 
 import { useAuth } from "react-oidc-context";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useAuthenticatedApi } from "@/lib/api";
 
@@ -24,11 +24,7 @@ export default function SignalsPage() {
   const [signals, setSignals] = useState<Signal[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    fetchSignals();
-  }, []);
-
-  const fetchSignals = async () => {
+  const fetchSignals = useCallback(async () => {
     try {
       const response = await authenticatedFetch('/api/signals');
       if (response.ok) {
@@ -40,7 +36,11 @@ export default function SignalsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchSignals();
+  }, []);
 
   const toggleSignalStatus = async (signalId: string, currentStatus: boolean) => {
     try {

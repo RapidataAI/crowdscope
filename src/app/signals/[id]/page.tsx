@@ -1,7 +1,7 @@
 'use client';
 
 import { useAuth } from "react-oidc-context";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
@@ -63,13 +63,7 @@ export default function SignalDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (signalId) {
-      fetchSignalDetails();
-    }
-  }, [signalId]);
-
-  const fetchSignalDetails = async () => {
+  const fetchSignalDetails = useCallback(async () => {
     try {
       const response = await authenticatedFetch(`/api/signals/${signalId}/details`);
       if (response.ok) {
@@ -84,7 +78,15 @@ export default function SignalDetailPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [signalId]);
+  
+  useEffect(() => {
+    if (signalId) {
+      fetchSignalDetails();
+    }
+  }, [signalId]);
+
+  
 
   const executeSignal = async () => {
     try {
@@ -112,7 +114,7 @@ export default function SignalDetailPage() {
 
   // Prepare chart data
   const chartData = signal?.runs.map((run, index) => {
-    const data: any = {
+    const data: Record<string, unknown> = {
       runIndex: index + 1,
       completedAt: run.completedAt,
       totalVotes: run.totalVotes,
@@ -131,16 +133,20 @@ export default function SignalDetailPage() {
   const colors = generateColors(signal?.answerOptions.length || 0);
 
   // Custom tooltip component
-  const CustomTooltip = ({ active, payload, label }: any) => {
+  const CustomTooltip = ({ active, payload, label }: {
+    active?: boolean;
+    payload?: Array<{ payload: Record<string, unknown> }>;
+    label?: string;
+  }) => {
     if (active && payload && payload.length) {
       const data = payload[0].payload;
-      const date = new Date(data.completedAt).toLocaleDateString();
+      const date = new Date(data.completedAt as string).toLocaleDateString();
       
       return (
         <div className="bg-white border border-gray-300 rounded-lg p-3 shadow-lg">
           <p className="font-medium text-gray-900">Run #{label}</p>
           <p className="text-sm text-gray-700 mb-2">{date}</p>
-          <p className="text-sm text-gray-700 mb-2">Total: {data.totalVotes} votes</p>
+          <p className="text-sm text-gray-700 mb-2">Total: {data.totalVotes as number} votes</p>
           <div className="space-y-1">
             {signal?.answerOptions.map((option, index) => (
               <div key={option} className="flex items-center justify-between text-sm">
@@ -152,9 +158,9 @@ export default function SignalDetailPage() {
                   <span className="text-gray-900">{option}:</span>
                 </div>
                 <div className="ml-2">
-                  <span className="font-medium text-gray-900">{data.responses[option] || 0}</span>
+                  <span className="font-medium text-gray-900">{(data.responses as Record<string, number>)[option] || 0}</span>
                   <span className="text-gray-700 ml-1">
-                    ({(data[option] || 0).toFixed(1)}%)
+                    ({((data[option] as number) || 0).toFixed(1)}%)
                   </span>
                 </div>
               </div>
