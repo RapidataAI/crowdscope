@@ -7,6 +7,7 @@ from models import db, User, Signal, SignalRun, Response
 from datetime import datetime
 from sqlalchemy import func
 from worker import start_background_worker, trigger_worker_immediately
+from auth import init_auth, token_required, get_current_user_id, get_current_user_email
 
 # Load environment variables
 load_dotenv()
@@ -18,18 +19,19 @@ CORS(app)
 app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'postgresql://postgres:password@localhost:5432/crowdscope')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-# Initialize database
+# Initialize database and auth
 db.init_app(app)
+init_auth()
 
 #Create tables and start background worker
-# with app.app_context():
-#     try:
-#         # Drop and recreate tables to add new columns
-#         db.drop_all()
-#         db.create_all()
-#         print("Database tables recreated successfully!")
-#     except Exception as e:
-#         print(f"Database error: {e}")
+with app.app_context():
+    try:
+        # Drop and recreate tables to add new columns
+        db.drop_all()
+        db.create_all()
+        print("Database tables recreated successfully!")
+    except Exception as e:
+        print(f"Database error: {e}")
 
 # Start background worker (protected by database lock)
 start_background_worker()
@@ -42,13 +44,18 @@ def health_check():
 
 # Signals CRUD endpoints
 @app.route("/api/signals", methods=["GET"])
+@token_required
 def get_signals():
-    """Get all signals with run counts"""
+    """Get all signals with run counts for the authenticated user"""
     try:
+        user_id = get_current_user_id()
+        if not user_id:
+            return jsonify({"error": "User ID not available"}), 400
+            
         signals = db.session.query(
             Signal, 
             func.count(SignalRun.id).label('run_count')
-        ).outerjoin(SignalRun).group_by(Signal.id).order_by(Signal.createdAt.desc()).all()
+        ).outerjoin(SignalRun).filter(Signal.createdBy == user_id).group_by(Signal.id).order_by(Signal.createdAt.desc()).all()
         
         result = []
         for signal, run_count in signals:
@@ -70,20 +77,28 @@ def get_signals():
         return jsonify({"error": "Failed to fetch signals", "details": str(e)}), 500
 
 @app.route("/api/signals", methods=["POST"])
+@token_required
 def create_signal():
     """Create a new signal"""
     try:
         data = request.get_json()
         
-        required_fields = ["name", "question", "answerOptions", "voteCount", "createdBy", "userEmail"]
+        required_fields = ["name", "question", "answerOptions", "voteCount"]
         for field in required_fields:
             if field not in data:
                 return jsonify({"error": f"Missing required field: {field}"}), 400
         
+        # Get user info from authenticated token
+        user_id = get_current_user_id()
+        user_email = get_current_user_email()
+        
+        if not user_id or not user_email:
+            return jsonify({"error": "User information not available from token"}), 400
+        
         # Ensure user exists in database
-        user = db.session.get(User, data["createdBy"])
+        user = db.session.get(User, user_id)
         if not user:
-            user = User(id=data["createdBy"], email=data["userEmail"])
+            user = User(id=user_id, email=user_email)
             db.session.add(user)
         
         # Create signal
@@ -92,7 +107,7 @@ def create_signal():
             question=data["question"],
             answerOptions=data["answerOptions"],  # Use camelCase column name
             voteCount=int(data["voteCount"]),     # Use camelCase column name
-            createdBy=data["createdBy"]           # Use camelCase column name
+            createdBy=user_id                     # Use authenticated user ID
         )
         
         db.session.add(signal)
@@ -118,12 +133,21 @@ def create_signal():
         return jsonify({"error": "Failed to create signal", "details": str(e)}), 500
 
 @app.route("/api/signals/<signal_id>", methods=["PATCH"])
+@token_required
 def update_signal(signal_id):
     """Update a signal (mainly for activate/deactivate)"""
     try:
+        user_id = get_current_user_id()
+        if not user_id:
+            return jsonify({"error": "User ID not available"}), 400
+            
         signal = db.session.get(Signal, signal_id)
         if not signal:
             return jsonify({"error": "Signal not found"}), 404
+            
+        # Check if user owns this signal
+        if signal.createdBy != user_id:
+            return jsonify({"error": "Access denied"}), 403
         
         data = request.get_json()
         
@@ -150,9 +174,14 @@ def update_signal(signal_id):
         return jsonify({"error": "Failed to update signal", "details": str(e)}), 500
 
 @app.route("/api/signals/execute", methods=["POST"])
+@token_required
 def execute_signal():
     """Execute a signal by creating a run in 'created' status"""
     try:
+        user_id = get_current_user_id()
+        if not user_id:
+            return jsonify({"error": "User ID not available"}), 400
+            
         data = request.get_json()
         
         if not data or "signalId" not in data:
@@ -161,6 +190,10 @@ def execute_signal():
         signal = db.session.get(Signal, data["signalId"])
         if not signal:
             return jsonify({"error": "Signal not found"}), 404
+            
+        # Check if user owns this signal
+        if signal.createdBy != user_id:
+            return jsonify({"error": "Access denied"}), 403
         
         if not signal.active:
             return jsonify({"error": "Signal is not active"}), 400
@@ -189,13 +222,22 @@ def execute_signal():
         return jsonify({"error": "Failed to execute signal", "details": str(e)}), 500
 
 @app.route("/api/signals/<signal_id>/details", methods=["GET"])
+@token_required
 def get_signal_details(signal_id):
     """Get detailed signal information including runs and responses"""
     try:
+        user_id = get_current_user_id()
+        if not user_id:
+            return jsonify({"error": "User ID not available"}), 400
+            
         # Get the signal
         signal = db.session.get(Signal, signal_id)
         if not signal:
             return jsonify({"error": "Signal not found"}), 404
+            
+        # Check if user owns this signal
+        if signal.createdBy != user_id:
+            return jsonify({"error": "Access denied"}), 403
         
         # Get all completed runs with their responses
         completed_runs = db.session.query(SignalRun).filter(

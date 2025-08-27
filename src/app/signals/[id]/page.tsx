@@ -1,10 +1,11 @@
 'use client';
 
-import { useUser } from "@stackframe/stack";
+import { useAuth } from "react-oidc-context";
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { useAuthenticatedApi } from "@/lib/api";
 
 interface Response {
   [option: string]: number;
@@ -53,7 +54,8 @@ const generateColors = (count: number) => {
 };
 
 export default function SignalDetailPage() {
-  const user = useUser();
+  const auth = useAuth();
+  const { authenticatedFetch } = useAuthenticatedApi();
   const params = useParams();
   const signalId = params.id as string;
   
@@ -69,7 +71,7 @@ export default function SignalDetailPage() {
 
   const fetchSignalDetails = async () => {
     try {
-      const response = await fetch(`/api/signals/${signalId}/details`);
+      const response = await authenticatedFetch(`/api/signals/${signalId}/details`);
       if (response.ok) {
         const data = await response.json();
         setSignal(data);
@@ -86,11 +88,8 @@ export default function SignalDetailPage() {
 
   const executeSignal = async () => {
     try {
-      const response = await fetch('/api/signals/execute', {
+      const response = await authenticatedFetch('/api/signals/execute', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify({
           signalId
         }),
@@ -167,7 +166,7 @@ export default function SignalDetailPage() {
     return null;
   };
 
-  if (!user) {
+  if (!auth.user) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="text-center">
@@ -219,10 +218,10 @@ export default function SignalDetailPage() {
             </div>
             <div className="flex items-center gap-3">
               <span className="text-sm text-gray-600">
-                Welcome, {user.displayName || user.primaryEmail}
+                Welcome, {auth.user?.profile?.name || auth.user?.profile?.email}
               </span>
               <button
-                onClick={() => user.signOut()}
+                onClick={() => auth.signoutRedirect()}
                 className="px-4 py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-md transition-colors"
               >
                 Sign Out

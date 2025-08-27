@@ -3,6 +3,7 @@
 import { useAuth } from "react-oidc-context";
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useAuthenticatedApi } from "@/lib/api";
 
 interface Signal {
   id: string;
@@ -19,6 +20,7 @@ interface Signal {
 
 export default function SignalsPage() {
   const auth = useAuth();
+  const { authenticatedFetch } = useAuthenticatedApi();
   const [signals, setSignals] = useState<Signal[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -28,7 +30,7 @@ export default function SignalsPage() {
 
   const fetchSignals = async () => {
     try {
-      const response = await fetch('/api/signals');
+      const response = await authenticatedFetch('/api/signals');
       if (response.ok) {
         const data = await response.json();
         setSignals(data);
@@ -42,11 +44,8 @@ export default function SignalsPage() {
 
   const toggleSignalStatus = async (signalId: string, currentStatus: boolean) => {
     try {
-      const response = await fetch(`/api/signals/${signalId}`, {
+      const response = await authenticatedFetch(`/api/signals/${signalId}`, {
         method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify({
           active: !currentStatus
         }),
@@ -70,11 +69,8 @@ export default function SignalsPage() {
 
   const executeSignal = async (signalId: string) => {
     try {
-      const response = await fetch('/api/signals/execute', {
+      const response = await authenticatedFetch('/api/signals/execute', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify({
           signalId
         }),

@@ -25,6 +25,8 @@
               requests
               python-dotenv
               psycopg2
+              pyjwt
+              cryptography
             ]))
             pkgs.postgresql
           ];
