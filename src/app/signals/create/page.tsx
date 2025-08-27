@@ -1,15 +1,17 @@
 'use client';
 
-import { useAuth } from "react-oidc-context";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { useAuthenticatedApi } from "@/lib/api";
+import { AuthGuard } from "@/components/AuthGuard";
+import { Header } from "@/components/Header";
+import { useRequireAuth } from "@/hooks/useRequireAuth";
+import { useGlobalNotifications } from "@/app/providers";
 
-export default function CreateSignalPage() {
-  const auth = useAuth();
+function CreateSignalPageContent() {
+  const { user } = useRequireAuth();
   const router = useRouter();
-  const { authenticatedFetch } = useAuthenticatedApi();
+  const { showError, showSuccess } = useGlobalNotifications();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
@@ -21,40 +23,47 @@ export default function CreateSignalPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!auth.user) return;
+    if (!user) return;
     
     // Filter out empty answer options
     const cleanAnswerOptions = formData.answerOptions.filter(option => option.trim() !== '');
     
     if (cleanAnswerOptions.length < 2) {
-      alert('Please provide at least 2 answer options');
+      showError('Please provide at least 2 answer options');
       return;
     }
 
     setLoading(true);
     
     try {
-      const response = await authenticatedFetch('/api/signals', {
+      const headers = {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${user.access_token}`,
+      };
+
+      const response = await fetch('/api/signals', {
         method: 'POST',
+        headers,
         body: JSON.stringify({
           name: formData.name,
           question: formData.question,
           answerOptions: cleanAnswerOptions,
           voteCount: parseInt(formData.voteCount),
-          createdBy: auth.user.profile.sub,
-          userEmail: auth.user.profile.email
+          createdBy: user.profile.sub,
+          userEmail: user.profile.email
         }),
       });
 
       if (response.ok) {
+        showSuccess('Signal created successfully!');
         router.push('/signals');
       } else {
         const error = await response.json();
-        alert(`Error: ${error.error || 'Failed to create signal'}`);
+        showError(`Error: ${error.error || 'Failed to create signal'}`);
       }
     } catch (error) {
       console.error('Error creating signal:', error);
-      alert('Failed to create signal. Please try again.');
+      showError('Failed to create signal. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -85,52 +94,9 @@ export default function CreateSignalPage() {
     }));
   };
 
-  if (!auth.user) {
-    return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">
-            Please sign in to create a signal
-          </h1>
-          <p className="text-gray-600">
-            You need to be authenticated to access this page.
-          </p>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-white">
-      {/* Header */}
-      <div className="border-b border-gray-200">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex justify-between items-center">
-            <div className="flex items-center gap-6">
-              <Link href="/" className="text-lg font-semibold text-gray-900">
-                CrowdScope
-              </Link>
-              <nav className="flex gap-4">
-                <Link href="/signals" className="text-gray-600 hover:text-gray-900">
-                  Signals
-                </Link>
-                <span className="text-blue-600 font-medium">Create Signal</span>
-              </nav>
-            </div>
-            <div className="flex items-center gap-3">
-              <span className="text-sm text-gray-600">
-                Welcome, {auth.user?.profile?.name || auth.user?.profile?.email}
-              </span>
-              <button
-                onClick={() => auth.signoutRedirect()}
-                className="px-4 py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-md transition-colors"
-              >
-                Sign Out
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
+      <Header />
 
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-2xl mx-auto">
@@ -245,5 +211,13 @@ export default function CreateSignalPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function CreateSignalPage() {
+  return (
+    <AuthGuard>
+      <CreateSignalPageContent />
+    </AuthGuard>
   );
 }

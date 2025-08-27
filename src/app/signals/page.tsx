@@ -1,9 +1,11 @@
 'use client';
 
-import { useAuth } from "react-oidc-context";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
-import { useAuthenticatedApi } from "@/lib/api";
+import { AuthGuard } from "@/components/AuthGuard";
+import { Header } from "@/components/Header";
+import { useRequireAuth } from "@/hooks/useRequireAuth";
+import { useGlobalNotifications } from "@/app/providers";
 
 interface Signal {
   id: string;
@@ -18,55 +20,57 @@ interface Signal {
   };
 }
 
-export default function SignalsPage() {
-  const auth = useAuth();
-  const { authenticatedFetch } = useAuthenticatedApi();
+function SignalsPageContent() {
+  const { user } = useRequireAuth();
+  const { showError } = useGlobalNotifications();
   const [signals, setSignals] = useState<Signal[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchSignals = async () => {
-      console.log('fetchSignals called - auth.isLoading:', auth.isLoading, 'auth.user:', !!auth.user);
-      
-      // Don't fetch if auth is loading or user is not authenticated
-      if (auth.isLoading || !auth.user || !auth.user.access_token) {
-        console.log('Skipping fetch - auth not ready');
+      if (!user?.access_token) {
         return;
       }
 
-      console.log('Attempting to fetch signals...');
       try {
-        // Inline the authenticated fetch to avoid dependency issues
         const headers = {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${auth.user.access_token}`,
+          'Authorization': `Bearer ${user.access_token}`,
         };
 
         const response = await fetch('/api/signals', { headers });
         if (response.ok) {
           const data = await response.json();
           setSignals(data);
-          console.log('Successfully fetched signals:', data.length);
         } else {
-          console.error('Failed to fetch signals:', response.status, response.statusText);
+          showError('Failed to fetch signals. Please try again.');
         }
       } catch (error) {
         console.error('Error fetching signals:', error);
+        showError('Error loading signals. Please check your connection.');
       } finally {
         setLoading(false);
       }
     };
 
-    // Only fetch when auth is ready and user is authenticated
-    if (!auth.isLoading && auth.user?.access_token) {
-      fetchSignals();
-    }
-  }, [auth.isLoading, auth.user?.access_token]);
+    fetchSignals();
+  }, [user?.access_token, showError]);
 
   const toggleSignalStatus = async (signalId: string, currentStatus: boolean) => {
+    if (!user?.access_token) {
+      showError('Authentication required to update signal status.');
+      return;
+    }
+
     try {
-      const response = await authenticatedFetch(`/api/signals/${signalId}`, {
+      const headers = {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${user.access_token}`,
+      };
+
+      const response = await fetch(`/api/signals/${signalId}`, {
         method: 'PATCH',
+        headers,
         body: JSON.stringify({
           active: !currentStatus
         }),
@@ -80,37 +84,23 @@ export default function SignalsPage() {
             : signal
         ));
       } else {
-        alert('Failed to update signal status');
+        showError('Failed to update signal status. Please try again.');
       }
     } catch (error) {
       console.error('Error updating signal:', error);
-      alert('Failed to update signal status');
+      showError('Error updating signal status. Please check your connection.');
     }
   };
 
 
-  useEffect(() => {
-    if (!auth.isLoading && !auth.user) {
-      // Redirect to login if not authenticated
-      auth.signinRedirect({ url_state: window.location.pathname })
-    }
-  }, [auth.isLoading, auth.user, auth])
-
-  if (auth.isLoading) {
+  if (loading) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
-        <div className="text-center">
-          <div className="text-gray-500">Loading...</div>
-        </div>
-      </div>
-    );
-  }
-
-  if (!auth.user) {
-    return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
-        <div className="text-center">
-          <div className="text-gray-500">Redirecting to login...</div>
+      <div className="min-h-screen bg-white">
+        <Header />
+        <div className="container mx-auto px-4 py-8">
+          <div className="text-center py-8">
+            <div className="text-gray-500">Loading signals...</div>
+          </div>
         </div>
       </div>
     );
@@ -118,34 +108,7 @@ export default function SignalsPage() {
 
   return (
     <div className="min-h-screen bg-white">
-      {/* Header */}
-      <div className="border-b border-gray-200">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex justify-between items-center">
-            <div className="flex items-center gap-6">
-              <Link href="/" className="text-lg font-semibold text-gray-900">
-                CrowdScope
-              </Link>
-              <nav className="flex gap-4">
-                <Link href="/signals" className="text-blue-600 font-medium">
-                  Signals
-                </Link>
-              </nav>
-            </div>
-            <div className="flex items-center gap-3">
-              <span className="text-sm text-gray-600">
-                Welcome, {auth.user?.profile?.name || auth.user?.profile?.email}
-              </span>
-              <button
-                onClick={() => auth.signoutRedirect()}
-                className="px-4 py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-md transition-colors"
-              >
-                Sign Out
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
+      <Header />
 
       <div className="container mx-auto px-4 py-8">
         <div className="flex justify-between items-center mb-8">
@@ -250,5 +213,13 @@ export default function SignalsPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function SignalsPage() {
+  return (
+    <AuthGuard>
+      <SignalsPageContent />
+    </AuthGuard>
   );
 }

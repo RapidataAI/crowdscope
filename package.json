@@ -15,7 +15,6 @@
     "lint": "eslint"
   },
   "dependencies": {
-    "@stackframe/stack": "^2.8.32",
     "next": "15.5.0",
     "oidc-client-ts": "^3.3.0",
     "react": "19.1.0",

@@ -1,8 +1,10 @@
 "use client"
 import { User, UserManagerSettings, WebStorageStateStore } from "oidc-client-ts"
-import React, { ReactNode, useEffect, useCallback } from "react"
+import React, { ReactNode, useEffect, useCallback, createContext, useContext } from "react"
 import { AuthProvider, useAuth } from "react-oidc-context"
 import { useRouter, usePathname } from "next/navigation"
+import { useNotifications } from "@/hooks/useNotifications"
+import { Notification } from "@/components/Notification"
 
 export const oidcConfig: UserManagerSettings = {
   authority: "https://auth.rapidata.ai",
@@ -30,6 +32,35 @@ export const oidcConfig: UserManagerSettings = {
       : undefined,
 }
 
+// Create notification context
+const NotificationContext = createContext<ReturnType<typeof useNotifications> | null>(null);
+
+export const useGlobalNotifications = () => {
+  const context = useContext(NotificationContext);
+  if (!context) {
+    throw new Error('useGlobalNotifications must be used within NotificationProvider');
+  }
+  return context;
+};
+
+function NotificationProvider({ children }: { children: ReactNode }) {
+  const notifications = useNotifications();
+
+  return (
+    <NotificationContext.Provider value={notifications}>
+      {children}
+      {/* Render notifications */}
+      {notifications.notifications.map((notification) => (
+        <Notification
+          key={notification.id}
+          {...notification}
+          onClose={() => notifications.removeNotification(notification.id)}
+        />
+      ))}
+    </NotificationContext.Provider>
+  );
+}
+
 export function Providers({ children }: { children: ReactNode }) {
   const router = useRouter()
 
@@ -43,41 +74,42 @@ export function Providers({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthProvider
-      {...oidcConfig}
-      onSigninCallback={onSigninCallback}
-    >
-      <MonitorSession />
-      {children}
-    </AuthProvider>
+    <NotificationProvider>
+      <AuthProvider
+        {...oidcConfig}
+        onSigninCallback={onSigninCallback}
+      >
+        <MonitorSession />
+        {children}
+      </AuthProvider>
+    </NotificationProvider>
   )
 }
 
 function MonitorSession() {
   const auth = useAuth()
   const pathname = usePathname()
+  const { showError, showWarning } = useGlobalNotifications()
 
   const handleSilentLoginError = useCallback(
     (err: Error) => {
       console.error('Session renewal failed:', err)
       
-      // Show user notification about session timeout
-      const timeoutMessage = "Your session has timed out. You will be redirected to the sign-in page in 5 seconds."
-      
-      // You can replace this with your preferred notification method
-      if (typeof window !== 'undefined' && window.alert) {
-        window.alert(timeoutMessage)
-      }
+      showWarning(
+        "You will be redirected to the sign-in page in 5 seconds.",
+        "Session Expired"
+      )
 
       setTimeout(async () => {
         try {
           await auth.signinRedirect({ url_state: pathname })
         } catch (redirectError) {
           console.error('Failed to redirect to sign-in:', redirectError)
+          showError('Failed to redirect to sign-in page. Please refresh and try again.')
         }
       }, 5000)
     },
-    [auth, pathname]
+    [auth, pathname, showError, showWarning]
   )
 
   // Handle access token expiring (before it expires)
