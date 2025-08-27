@@ -5,7 +5,7 @@ from typing import List
 from sqlalchemy import create_engine, func, text
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.exc import OperationalError
-from models import SignalRun, Signal, Response
+from models import SignalRun, Signal, Response, User
 import os
 from dotenv import load_dotenv
 import uuid
@@ -114,13 +114,26 @@ def process_created_runs():
         for run in created_runs:
             print(f"Processing run {run.id} for signal {run.signalId}")
             try:
-                # Get the signal data
+                # Get the signal and user data
                 signal = session.query(Signal).filter(Signal.id == run.signalId).first()
                 if not signal:
                     run.status = 'failed'
                     run.errorMessage = 'Associated signal not found'
                     session.commit()
                     continue
+                
+                # Get the user's credentials
+                user = session.query(User).filter(User.id == signal.createdBy).first()
+                if not user or not user.rapidataClientId or not user.rapidataClientSecret:
+                    run.status = 'failed'
+                    run.errorMessage = 'User not found or missing client credentials'
+                    session.commit()
+                    continue
+                
+                user_credentials = {
+                    'client_id': user.rapidataClientId,
+                    'client_secret': user.rapidataClientSecret
+                }
                 
                 # Create Rapidata order
                 result = create_rapidata_order_worker({
@@ -129,7 +142,7 @@ def process_created_runs():
                     "question": signal.question,
                     "answer_options": signal.answerOptions,
                     "vote_count": signal.voteCount
-                })
+                }, user_credentials)
                 
                 if result["success"]:
                     # Update run with rapidata order id but keep status as 'created'
@@ -157,14 +170,17 @@ def process_created_runs():
     finally:
         session.close()
 
-def create_rapidata_order_worker(signal_data):
+def create_rapidata_order_worker(signal_data, user_credentials):
     """Create a Rapidata order for a CrowdScope signal (worker version)"""
     try:
         # Import rapidata - should work since it's in the same environment
         from rapidata import RapidataClient
         
-        # Initialize Rapidata client
-        rapi = RapidataClient()
+        # Initialize Rapidata client with user's credentials
+        rapi = RapidataClient(
+            client_id=user_credentials['client_id'],
+            client_secret=user_credentials['client_secret']
+        )
         
         # Create the survey order
         order = rapi.order.create_classification_order(
@@ -198,10 +214,6 @@ def poll_rapidata_orders():
     """Poll rapidata orders for runs that have rapidata order IDs but are still in 'created' status or are in 'processing' status"""
     session = SessionLocal()
     try:
-        # Import rapidata
-        from rapidata import RapidataClient
-        rapi = RapidataClient()
-        
         # Get runs that have rapidata order IDs but are in 'created' status (need to be moved to processing)
         # OR runs that are in 'processing' status (need status check)
         runs_to_check = session.query(SignalRun).filter(
@@ -213,6 +225,24 @@ def poll_rapidata_orders():
         
         for run in runs_to_check:
             try:
+                # Get the signal and user data for credentials
+                signal = session.query(Signal).filter(Signal.id == run.signalId).first()
+                if not signal:
+                    print(f"Signal not found for run {run.id}")
+                    continue
+                    
+                user = session.query(User).filter(User.id == signal.createdBy).first()
+                if not user or not user.rapidataClientId or not user.rapidataClientSecret:
+                    print(f"User credentials not found for run {run.id}")
+                    continue
+                
+                # Import rapidata and initialize with user credentials
+                from rapidata import RapidataClient
+                rapi = RapidataClient(
+                    client_id=user.rapidataClientId,
+                    client_secret=user.rapidataClientSecret
+                )
+                
                 # Get the rapidata order status
                 order = rapi.order.get_order_by_id(run.rapidataOrderId)
                 order_status = order.get_status()

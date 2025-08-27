@@ -116,3 +116,41 @@ def get_current_user_email() -> Optional[str]:
 def get_current_user_payload() -> Optional[Dict[str, Any]]:
     """Get the current user's full JWT payload from the request context"""
     return getattr(request, 'user_payload', None)
+
+def get_current_access_token() -> Optional[str]:
+    """Get the current access token from the request headers"""
+    if 'Authorization' in request.headers:
+        auth_header = request.headers['Authorization']
+        try:
+            return auth_header.split(" ")[1]  # Bearer <token>
+        except IndexError:
+            return None
+    return None
+
+def generate_client_credentials(access_token: str) -> Optional[Dict[str, str]]:
+    """Generate new client credentials from Rapidata auth service"""
+    try:
+        response = requests.post(
+            "https://auth.rapidata.ai/client",
+            headers={
+                "Authorization": f"Bearer {access_token}",
+                "Content-Type": "application/json"
+            },
+            json={},  # Send empty JSON payload as required by CreateClientModel
+            timeout=30
+        )
+        
+        if response.status_code == 200:
+            data = response.json()
+            return {
+                'client_id': data.get('clientId'),
+                'client_secret': data.get('clientSecret')
+            }
+        else:
+            logger.error(f"Failed to generate client credentials: HTTP {response.status_code}")
+            logger.error(f"Response: {response.text}")
+            return None
+            
+    except requests.RequestException as e:
+        logger.error(f"Error generating client credentials: {e}")
+        return None

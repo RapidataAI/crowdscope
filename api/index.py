@@ -7,7 +7,7 @@ from models import db, User, Signal, SignalRun, Response
 from datetime import datetime
 from sqlalchemy import func
 from worker import start_background_worker, trigger_worker_immediately
-from auth import init_auth, token_required, get_current_user_id, get_current_user_email
+from auth import init_auth, token_required, get_current_user_id, get_current_user_email, generate_client_credentials, get_current_access_token
 
 # Load environment variables
 load_dotenv()
@@ -35,6 +35,22 @@ with app.app_context():
 
 # Start background worker (protected by database lock)
 start_background_worker()
+
+def ensure_user_has_credentials(user, access_token):
+    """Ensure user has Rapidata client credentials, generate if missing"""
+    if not user.rapidataClientId or not user.rapidataClientSecret:
+        print(f"Generating client credentials for user {user.id}")
+        credentials = generate_client_credentials(access_token)
+        if credentials:
+            user.rapidataClientId = credentials['client_id']
+            user.rapidataClientSecret = credentials['client_secret']
+            db.session.commit()
+            print(f"Successfully generated credentials for user {user.id}")
+            return True
+        else:
+            print(f"Failed to generate credentials for user {user.id}")
+            return False
+    return True
 
 # Health check
 @app.route("/api/health", methods=["GET"])
@@ -100,6 +116,15 @@ def create_signal():
         if not user:
             user = User(id=user_id, email=user_email)
             db.session.add(user)
+            db.session.flush()  # Flush to get the user ID for credential generation
+        
+        # Ensure user has Rapidata client credentials
+        access_token = get_current_access_token()
+        if not access_token:
+            return jsonify({"error": "Access token not available"}), 400
+            
+        if not ensure_user_has_credentials(user, access_token):
+            return jsonify({"error": "Failed to generate required client credentials"}), 500
         
         # Create signal
         signal = Signal(
