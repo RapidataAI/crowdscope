@@ -67,29 +67,6 @@ export default function SignalsPage() {
     }
   };
 
-  const executeSignal = async (signalId: string) => {
-    try {
-      const response = await authenticatedFetch('/api/signals/execute', {
-        method: 'POST',
-        body: JSON.stringify({
-          signalId
-        }),
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        alert(`Signal executed successfully! Run ID: ${result.signalRunId}`);
-        // Refresh the signals data to show updated run count
-        fetchSignals();
-      } else {
-        const error = await response.json();
-        alert(`Failed to execute signal: ${error.error}`);
-      }
-    } catch (error) {
-      console.error('Error executing signal:', error);
-      alert('Failed to execute signal');
-    }
-  };
 
   useEffect(() => {
     if (!auth.isLoading && !auth.user) {
@@ -243,17 +220,6 @@ export default function SignalsPage() {
                     <span className="mr-4">{signal.voteCount} votes/day</span>
                     <span>{signal._count.signalRuns} runs</span>
                   </div>
-                  {signal.active && (
-                    <button
-                      onClick={(e) => {
-                        e.preventDefault();
-                        executeSignal(signal.id);
-                      }}
-                      className="px-3 py-1 bg-blue-100 hover:bg-blue-200 text-blue-800 text-xs rounded-md transition-colors"
-                    >
-                      Execute Now
-                    </button>
-                  )}
                 </div>
               </Link>
             ))}

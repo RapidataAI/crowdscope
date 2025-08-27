@@ -3,7 +3,7 @@
 import { useAuth } from "react-oidc-context";
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { useAuthenticatedApi } from "@/lib/api";
 
@@ -79,6 +79,7 @@ export default function SignalDetailPage() {
   const auth = useAuth();
   const { authenticatedFetch } = useAuthenticatedApi();
   const params = useParams();
+  const router = useRouter();
   const signalId = params.id as string;
   
   const [signal, setSignal] = useState<SignalDetail | null>(null);
@@ -131,6 +132,54 @@ export default function SignalDetailPage() {
     } catch (error) {
       console.error('Error executing signal:', error);
       alert('Failed to execute signal');
+    }
+  };
+
+  const deleteRun = async (runId: string) => {
+    if (!confirm('Are you sure you want to delete this run? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      const response = await authenticatedFetch(`/api/signals/${signalId}/runs/${runId}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        alert('Run deleted successfully!');
+        // Refresh the signal details to remove the deleted run
+        fetchSignalDetails();
+      } else {
+        const error = await response.json();
+        alert(`Failed to delete run: ${error.error}`);
+      }
+    } catch (error) {
+      console.error('Error deleting run:', error);
+      alert('Failed to delete run');
+    }
+  };
+
+  const deleteSignal = async () => {
+    if (!confirm('Are you sure you want to delete this signal? This will delete all runs and associated data. This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      const response = await authenticatedFetch(`/api/signals/${signalId}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        alert('Signal deleted successfully!');
+        // Redirect to signals list
+        router.push('/signals');
+      } else {
+        const error = await response.json();
+        alert(`Failed to delete signal: ${error.error}`);
+      }
+    } catch (error) {
+      console.error('Error deleting signal:', error);
+      alert('Failed to delete signal');
     }
   };
 
@@ -281,14 +330,28 @@ export default function SignalDetailPage() {
               </span>
             </div>
           </div>
-          {signal.active && (
+          <div className="flex items-center gap-3">
+            {signal.active && (
+              <button
+                onClick={executeSignal}
+                className="p-2 text-green-600 hover:text-green-700 hover:bg-green-50 rounded-md transition-colors"
+                title="Execute signal now"
+              >
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M8 5v14l11-7z"/>
+                </svg>
+              </button>
+            )}
             <button
-              onClick={executeSignal}
-              className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors"
+              onClick={deleteSignal}
+              className="p-2 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-md transition-colors"
+              title="Delete this signal"
             >
-              Execute Now
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
             </button>
-          )}
+          </div>
         </div>
 
         {/* Signal Details */}
@@ -387,13 +450,16 @@ export default function SignalDetailPage() {
             <h2 className="text-xl font-semibold text-gray-900 mb-6">Execution History</h2>
             <div className="space-y-4">
               {signal.runs.map((run, index) => (
-                <div key={run.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                  <div className="flex items-center gap-4">
-                    <div className="flex items-center justify-center w-8 h-8 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">
+                <div key={run.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 cursor-pointer transition-colors group">
+                  <div 
+                    className="flex items-center gap-4 flex-1"
+                    onClick={() => window.open(`https://app.rapidata.ai/order/detail/${run.rapidataOrderId}`, '_blank')}
+                  >
+                    <div className="flex items-center justify-center w-8 h-8 bg-blue-100 text-blue-800 rounded-full text-sm font-medium group-hover:bg-blue-200 transition-colors">
                       #{index + 1}
                     </div>
                     <div>
-                      <div className="font-medium text-gray-900">
+                      <div className="font-medium text-gray-900 group-hover:text-blue-600 transition-colors">
                         Run {run.id.slice(0, 8)}...
                         <span className={`ml-2 px-2 py-1 text-xs rounded ${
                           run.status === 'completed' ? 'bg-green-100 text-green-800' :
@@ -423,14 +489,18 @@ export default function SignalDetailPage() {
                         </div>
                       )}
                     </div>
-                    <a
-                      href={`https://app.rapidata.ai/order/detail/${run.rapidataOrderId}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="px-3 py-1 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors"
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        deleteRun(run.id);
+                      }}
+                      className="p-2 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-md transition-colors opacity-0 group-hover:opacity-100"
+                      title="Delete this run"
                     >
-                      View Details
-                    </a>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                    </button>
                   </div>
                 </div>
               ))}

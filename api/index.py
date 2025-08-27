@@ -258,6 +258,122 @@ def execute_signal():
         db.session.rollback()
         return jsonify({"error": "Failed to execute signal", "details": str(e)}), 500
 
+@app.route("/api/signals/<signal_id>/runs/<run_id>", methods=["DELETE"])
+@token_required
+def delete_run(signal_id, run_id):
+    """Delete a specific run and its Rapidata order if not completed"""
+    try:
+        user_id = get_current_user_id()
+        if not user_id:
+            return jsonify({"error": "User ID not available"}), 400
+            
+        # Get the signal first to check ownership
+        signal = db.session.get(Signal, signal_id)
+        if not signal:
+            return jsonify({"error": "Signal not found"}), 404
+            
+        # Check if user owns this signal
+        if signal.createdBy != user_id:
+            return jsonify({"error": "Access denied"}), 403
+            
+        # Get the run
+        run = db.session.get(SignalRun, run_id)
+        if not run or run.signalId != signal_id:
+            return jsonify({"error": "Run not found"}), 404
+            
+        # Delete Rapidata order if run is not completed and has an order ID
+        if run.status != 'completed' and run.rapidataOrderId:
+            try:
+                # Get user credentials for Rapidata API
+                user = db.session.get(User, user_id)
+                if user and user.rapidataClientId and user.rapidataClientSecret:
+                    from rapidata import RapidataClient
+                    rapi = RapidataClient(
+                        client_id=user.rapidataClientId,
+                        client_secret=user.rapidataClientSecret
+                    )
+                    
+                    # Get the order and delete it
+                    order = rapi.order.get_order_by_id(run.rapidataOrderId)
+                    order.delete()
+                    print(f"Deleted Rapidata order {run.rapidataOrderId} for run {run_id}")
+                    
+            except Exception as e:
+                print(f"Error deleting Rapidata order: {e}")
+                # Continue with database deletion even if Rapidata deletion fails
+        
+        # Delete the run (this will cascade delete responses due to database rules)
+        db.session.delete(run)
+        db.session.commit()
+        
+        return jsonify({"success": True, "message": "Run deleted successfully"})
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error deleting run: {e}")
+        return jsonify({"error": "Failed to delete run", "details": str(e)}), 500
+
+@app.route("/api/signals/<signal_id>", methods=["DELETE"])
+@token_required
+def delete_signal(signal_id):
+    """Delete a signal and all its runs, including Rapidata orders for non-completed runs"""
+    try:
+        user_id = get_current_user_id()
+        if not user_id:
+            return jsonify({"error": "User ID not available"}), 400
+            
+        # Get the signal
+        signal = db.session.get(Signal, signal_id)
+        if not signal:
+            return jsonify({"error": "Signal not found"}), 404
+            
+        # Check if user owns this signal
+        if signal.createdBy != user_id:
+            return jsonify({"error": "Access denied"}), 403
+            
+        # Get user credentials for Rapidata API
+        user = db.session.get(User, user_id)
+        if user and user.rapidataClientId and user.rapidataClientSecret:
+            # Get all runs for this signal that have Rapidata orders
+            runs_with_orders = db.session.query(SignalRun).filter(
+                SignalRun.signalId == signal_id,
+                SignalRun.rapidataOrderId.isnot(None),
+                SignalRun.status != 'completed'  # Only delete non-completed orders
+            ).all()
+            
+            if runs_with_orders:
+                try:
+                    from rapidata import RapidataClient
+                    rapi = RapidataClient(
+                        client_id=user.rapidataClientId,
+                        client_secret=user.rapidataClientSecret
+                    )
+                    
+                    # Delete each Rapidata order
+                    for run in runs_with_orders:
+                        try:
+                            order = rapi.order.get_order_by_id(run.rapidataOrderId)
+                            order.delete()
+                            print(f"Deleted Rapidata order {run.rapidataOrderId} for run {run.id}")
+                        except Exception as e:
+                            print(f"Error deleting Rapidata order {run.rapidataOrderId}: {e}")
+                            # Continue with other deletions
+                            
+                except Exception as e:
+                    print(f"Error initializing Rapidata client: {e}")
+                    # Continue with database deletion
+        
+        # Delete the signal (this will cascade delete all runs and responses due to database rules)
+        db.session.delete(signal)
+        db.session.commit()
+        
+        return jsonify({"success": True, "message": "Signal and all associated data deleted successfully"})
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error deleting signal: {e}")
+        return jsonify({"error": "Failed to delete signal", "details": str(e)}), 500
+
 @app.route("/api/signals/<signal_id>/details", methods=["GET"])
 @token_required
 def get_signal_details(signal_id):
