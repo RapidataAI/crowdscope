@@ -24,23 +24,44 @@ export default function SignalsPage() {
   const [signals, setSignals] = useState<Signal[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchSignals = useCallback(async () => {
-    try {
-      const response = await authenticatedFetch('/api/signals');
-      if (response.ok) {
-        const data = await response.json();
-        setSignals(data);
-      }
-    } catch (error) {
-      console.error('Error fetching signals:', error);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
   useEffect(() => {
-    fetchSignals();
-  }, []);
+    const fetchSignals = async () => {
+      console.log('fetchSignals called - auth.isLoading:', auth.isLoading, 'auth.user:', !!auth.user);
+      
+      // Don't fetch if auth is loading or user is not authenticated
+      if (auth.isLoading || !auth.user || !auth.user.access_token) {
+        console.log('Skipping fetch - auth not ready');
+        return;
+      }
+
+      console.log('Attempting to fetch signals...');
+      try {
+        // Inline the authenticated fetch to avoid dependency issues
+        const headers = {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${auth.user.access_token}`,
+        };
+
+        const response = await fetch('/api/signals', { headers });
+        if (response.ok) {
+          const data = await response.json();
+          setSignals(data);
+          console.log('Successfully fetched signals:', data.length);
+        } else {
+          console.error('Failed to fetch signals:', response.status, response.statusText);
+        }
+      } catch (error) {
+        console.error('Error fetching signals:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    // Only fetch when auth is ready and user is authenticated
+    if (!auth.isLoading && auth.user?.access_token) {
+      fetchSignals();
+    }
+  }, [auth.isLoading, auth.user?.access_token]);
 
   const toggleSignalStatus = async (signalId: string, currentStatus: boolean) => {
     try {

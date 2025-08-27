@@ -86,28 +86,46 @@ export default function SignalDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchSignalDetails = useCallback(async () => {
-    try {
-      const response = await authenticatedFetch(`/api/signals/${signalId}/details`);
-      if (response.ok) {
-        const data = await response.json();
-        setSignal(data);
-      } else {
-        setError('Failed to fetch signal details');
-      }
-    } catch (error) {
-      console.error('Error fetching signal details:', error);
-      setError('Failed to fetch signal details');
-    } finally {
-      setLoading(false);
-    }
-  }, [signalId]);
-  
   useEffect(() => {
-    if (signalId) {
+    const fetchSignalDetails = async () => {
+      console.log('fetchSignalDetails called - auth.isLoading:', auth.isLoading, 'auth.user:', !!auth.user);
+      
+      // Don't fetch if auth is loading or user is not authenticated
+      if (auth.isLoading || !auth.user || !auth.user.access_token) {
+        console.log('Skipping fetch - auth not ready');
+        return;
+      }
+
+      console.log('Attempting to fetch signal details...');
+      try {
+        // Inline the authenticated fetch to avoid dependency issues
+        const headers = {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${auth.user.access_token}`,
+        };
+
+        const response = await fetch(`/api/signals/${signalId}/details`, { headers });
+        if (response.ok) {
+          const data = await response.json();
+          setSignal(data);
+          console.log('Successfully fetched signal details');
+        } else {
+          console.error('Failed to fetch signal details:', response.status, response.statusText);
+          setError('Failed to fetch signal details');
+        }
+      } catch (error) {
+        console.error('Error fetching signal details:', error);
+        setError('Failed to fetch signal details');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    // Only fetch when auth is ready, user is authenticated, and we have a signalId
+    if (!auth.isLoading && auth.user?.access_token && signalId) {
       fetchSignalDetails();
     }
-  }, [signalId]);
+  }, [auth.isLoading, auth.user?.access_token, signalId]);
 
   
 
@@ -124,7 +142,7 @@ export default function SignalDetailPage() {
         const result = await response.json();
         alert(`Signal executed successfully! Run ID: ${result.signalRunId}`);
         // Refresh the signal details to show the new run when it completes
-        setTimeout(() => fetchSignalDetails(), 2000);
+        setTimeout(() => window.location.reload(), 2000);
       } else {
         const error = await response.json();
         alert(`Failed to execute signal: ${error.error}`);
@@ -148,7 +166,7 @@ export default function SignalDetailPage() {
       if (response.ok) {
         alert('Run deleted successfully!');
         // Refresh the signal details to remove the deleted run
-        fetchSignalDetails();
+        window.location.reload();
       } else {
         const error = await response.json();
         alert(`Failed to delete run: ${error.error}`);
