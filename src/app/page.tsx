@@ -1,11 +1,10 @@
 'use client';
 
-import { useUser, useStackApp } from "@stackframe/stack";
 import Link from "next/link";
+import { useAuth } from "react-oidc-context";
 
 export default function Home() {
-  const user = useUser();
-  const app = useStackApp();
+  const auth = useAuth();
 
   return (
     <main className="min-h-screen bg-white">
@@ -17,7 +16,7 @@ export default function Home() {
               <Link href="/" className="text-lg font-semibold text-gray-900">
                 CrowdScope
               </Link>
-              {user && (
+              {auth.user && (
                 <nav className="flex gap-4">
                   <Link href="/signals" className="text-gray-600 hover:text-gray-900">
                     Signals
@@ -26,13 +25,13 @@ export default function Home() {
               )}
             </div>
             <div className="flex items-center gap-4">
-              {user ? (
+              {auth.user ? (
                 <div className="flex items-center gap-3">
                   <span className="text-sm text-gray-600">
-                    Welcome, {user.displayName || user.primaryEmail}
+                    Welcome, {auth.user.profile?.name || auth.user.profile?.email}
                   </span>
                   <button
-                    onClick={() => user.signOut()}
+                    onClick={() => auth.signoutRedirect()}
                     className="px-4 py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-md transition-colors"
                   >
                     Sign Out
@@ -41,7 +40,7 @@ export default function Home() {
               ) : (
                 <div className="flex gap-2">
                   <button
-                    onClick={() => app.redirectToSignIn()}
+                    onClick={() => auth.signinRedirect()}
                     className="px-4 py-2 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors"
                   >
                     Sign In
@@ -91,7 +90,7 @@ export default function Home() {
 
           {/* CTA Section */}
           <div className="mt-12 pt-8 border-t border-gray-200">
-            {user ? (
+            {auth.user ? (
               <div className="space-y-4">
                 <p className="text-gray-600 text-lg">
                   Ready to create your first signal?

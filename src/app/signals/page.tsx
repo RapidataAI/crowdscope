@@ -1,6 +1,6 @@
 'use client';
 
-import { useUser } from "@stackframe/stack";
+import { useAuth } from "react-oidc-context";
 import { useState, useEffect } from "react";
 import Link from "next/link";
 
@@ -18,7 +18,7 @@ interface Signal {
 }
 
 export default function SignalsPage() {
-  const user = useUser();
+  const auth = useAuth();
   const [signals, setSignals] = useState<Signal[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -95,16 +95,28 @@ export default function SignalsPage() {
     }
   };
 
-  if (!user) {
+  useEffect(() => {
+    if (!auth.isLoading && !auth.user) {
+      // Redirect to login if not authenticated
+      auth.signinRedirect({ url_state: window.location.pathname })
+    }
+  }, [auth.isLoading, auth.user, auth])
+
+  if (auth.isLoading) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">
-            Please sign in to view your signals
-          </h1>
-          <p className="text-gray-600">
-            You need to be authenticated to access this page.
-          </p>
+          <div className="text-gray-500">Loading...</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!auth.user) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-gray-500">Redirecting to login...</div>
         </div>
       </div>
     );
@@ -128,10 +140,10 @@ export default function SignalsPage() {
             </div>
             <div className="flex items-center gap-3">
               <span className="text-sm text-gray-600">
-                Welcome, {user.displayName || user.primaryEmail}
+                Welcome, {auth.user?.profile?.name || auth.user?.profile?.email}
               </span>
               <button
-                onClick={() => user.signOut()}
+                onClick={() => auth.signoutRedirect()}
                 className="px-4 py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-md transition-colors"
               >
                 Sign Out
