@@ -82,11 +82,13 @@ function SignalDetailPageContent() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-white">
+      <div className="min-h-screen bg-gray-50">
         <Header />
-        <div className="container mx-auto px-4 py-8">
-          <div className="text-center py-8">
-            <div className="text-gray-500">Loading signal details...</div>
+        <div className="container mx-auto px-6 py-12">
+          <div className="max-w-7xl mx-auto">
+            <div className="text-center py-8">
+              <div className="text-gray-500">Loading signal details...</div>
+            </div>
           </div>
         </div>
       </div>
@@ -95,15 +97,17 @@ function SignalDetailPageContent() {
 
   if (error || !signal) {
     return (
-      <div className="min-h-screen bg-white">
+      <div className="min-h-screen bg-gray-50">
         <Header />
-        <div className="container mx-auto px-4 py-8">
-          <div className="text-center">
-            <h1 className="text-2xl font-bold text-gray-900 mb-4">Error</h1>
-            <p className="text-gray-600">{error?.message || 'Signal not found'}</p>
-            <Link href="/signals" className="text-blue-600 hover:text-blue-700 mt-4 inline-block">
-              ← Back to Signals
-            </Link>
+        <div className="container mx-auto px-6 py-12">
+          <div className="max-w-7xl mx-auto">
+            <div className="text-center">
+              <h1 className="text-2xl font-bold text-gray-900 mb-4">Error</h1>
+              <p className="text-gray-600">{error?.message || 'Signal not found'}</p>
+              <Link href="/signals" className="text-blue-600 hover:text-blue-700 mt-4 inline-block">
+                ← Back to Signals
+              </Link>
+            </div>
           </div>
         </div>
       </div>
@@ -113,10 +117,11 @@ function SignalDetailPageContent() {
   const colors = generateColors(signal.answerOptions.length);
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-gray-50">
       <Header />
 
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-6 py-12">
+        <div className="max-w-7xl mx-auto">
         {/* Signal Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
@@ -142,36 +147,42 @@ function SignalDetailPageContent() {
 
         {/* Signal Details */}
         <div className="grid md:grid-cols-2 gap-8 mb-8">
-          <div className="bg-gray-50 rounded-lg p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-3">Question</h2>
-            <p className="text-gray-700">{signal.question}</p>
+          <div className="card">
+            <div className="p-6">
+              <h2 className="text-lg font-semibold text-gray-900 mb-3">Question</h2>
+              <p className="text-gray-700">{signal.question}</p>
+            </div>
           </div>
           
-          <div className="bg-gray-50 rounded-lg p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-3">Answer Options</h2>
-            <div className="grid grid-cols-2 gap-2">
-              {signal.answerOptions.map((option: string, index: number) => (
-                <div key={option} className="flex items-center">
-                  <div 
-                    className="w-4 h-4 rounded mr-2" 
-                    style={{ backgroundColor: colors[index] }}
-                  ></div>
-                  <span className="text-gray-700">{option}</span>
-                </div>
-              ))}
+          <div className="card">
+            <div className="p-6">
+              <h2 className="text-lg font-semibold text-gray-900 mb-3">Answer Options</h2>
+              <div className="grid grid-cols-2 gap-2">
+                {signal.answerOptions.map((option: string, index: number) => (
+                  <div key={option} className="flex items-center">
+                    <div 
+                      className="w-4 h-4 rounded mr-2" 
+                      style={{ backgroundColor: colors[index] }}
+                    ></div>
+                    <span className="text-gray-700">{option}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </div>
 
         {/* Country Filter */}
         {signal.countries && signal.countries.length > 0 && (
-          <div className="bg-gray-50 rounded-lg p-6 mb-8">
-            <h2 className="text-lg font-semibold text-gray-900 mb-3">Country Filter</h2>
-            <div className="flex flex-col gap-2">
-              <p className="text-sm text-gray-600">
-                This signal is filtered to responses from the following {signal.countries.length === 1 ? 'country' : 'countries'}:
-              </p>
-              <CountryFlags countries={signal.countries} />
+          <div className="card mb-8">
+            <div className="p-6">
+              <h2 className="text-lg font-semibold text-gray-900 mb-3">Country Filter</h2>
+              <div className="flex flex-col gap-2">
+                <p className="text-sm text-gray-600">
+                  This signal is filtered to responses from the following {signal.countries.length === 1 ? 'country' : 'countries'}:
+                </p>
+                <CountryFlags countries={signal.countries} />
+              </div>
             </div>
           </div>
         )}
@@ -181,18 +192,21 @@ function SignalDetailPageContent() {
 
         {/* Execute Signal CTA for empty state */}
         {signal.runs.length === 0 && signal.active && (
-          <div className="bg-gray-50 rounded-lg p-12 text-center mt-8">
-            <button
-              onClick={handleExecuteSignal}
-              className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors"
-            >
-              Execute Signal
-            </button>
+          <div className="card text-center mt-8">
+            <div className="p-12">
+              <button
+                onClick={handleExecuteSignal}
+                className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors"
+              >
+                Execute Signal
+              </button>
+            </div>
           </div>
         )}
 
         {/* Runs History */}
         <RunsList runs={signal.runs} onDeleteRun={handleDeleteRun} />
+        </div>
       </div>
     </div>
   );
