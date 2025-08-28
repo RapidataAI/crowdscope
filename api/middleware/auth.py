@@ -1,7 +1,7 @@
 import jwt
 import requests
 from functools import wraps
-from flask import request, jsonify, current_app
+from flask import request, jsonify
 from typing import Optional, Dict, Any
 from jwt import PyJWKClient
 import logging
@@ -126,31 +126,3 @@ def get_current_access_token() -> Optional[str]:
         except IndexError:
             return None
     return None
-
-def generate_client_credentials(access_token: str) -> Optional[Dict[str, str]]:
-    """Generate new client credentials from Rapidata auth service"""
-    try:
-        response = requests.post(
-            "https://auth.rapidata.ai/client",
-            headers={
-                "Authorization": f"Bearer {access_token}",
-                "Content-Type": "application/json"
-            },
-            json={},  # Send empty JSON payload as required by CreateClientModel
-            timeout=30
-        )
-        
-        if response.status_code == 200:
-            data = response.json()
-            return {
-                'client_id': data.get('clientId'),
-                'client_secret': data.get('clientSecret')
-            }
-        else:
-            logger.error(f"Failed to generate client credentials: HTTP {response.status_code}")
-            logger.error(f"Response: {response.text}")
-            return None
-            
-    except requests.RequestException as e:
-        logger.error(f"Error generating client credentials: {e}")
-        return None

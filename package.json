@@ -5,13 +5,13 @@
   "scripts": {
     "dev": "concurrently \"npm run dev:frontend\" \"npm run dev:backend\" --names \"frontend,backend\" --prefix-colors \"blue,green\"",
     "dev:frontend": "next dev --turbopack",
-    "dev:backend": "cd api && nix develop -c python index.py",
+    "dev:backend": "cd api && nix develop -c python app.py",
     "build": "next build --turbopack",
     "start": "next start",
     "prod": "concurrently \"npm run prod:frontend\" \"npm run prod:backend\" --names \"frontend,backend\" --prefix-colors \"blue,green\"",
     "prod:frontend": "npm run build && next start",
     "prod:backend": "cd api && nix develop -c sh -c 'pip install gunicorn && gunicorn -w 4 -b 0.0.0.0:5328 index:app'",
-    "flask": "cd api && FLASK_APP=index.py nix develop -c flask",
+    "flask": "cd api && FLASK_APP=app.py nix develop -c flask",
     "lint": "eslint"
   },
   "dependencies": {
