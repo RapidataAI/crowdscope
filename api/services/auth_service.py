@@ -3,24 +3,30 @@ from models import User
 from config.database import db
 
 def generate_client_credentials(access_token):
-    """Generate Rapidata client credentials for a user"""
+    """Generate new client credentials from Rapidata auth service"""
     try:
-        # This would call the Rapidata API to generate credentials
-        # Implementation depends on your Rapidata API
         response = requests.post(
-            "https://auth.rapidata.ai/connect/token",
-            headers={"Authorization": f"Bearer {access_token}"},
-            data={"grant_type": "client_credentials"}
+            "https://auth.rapidata.ai/client",
+            headers={
+                "Authorization": f"Bearer {access_token}",
+                "Content-Type": "application/json"
+            },
+            json={},  # Send empty JSON payload as required by CreateClientModel
+            timeout=30
         )
         
         if response.status_code == 200:
             data = response.json()
             return {
-                'client_id': data.get('client_id'),
-                'client_secret': data.get('client_secret')
+                'client_id': data.get('clientId'),
+                'client_secret': data.get('clientSecret')
             }
-        return None
-    except Exception as e:
+        else:
+            print(f"Failed to generate client credentials: HTTP {response.status_code}")
+            print(f"Response: {response.text}")
+            return None
+            
+    except requests.RequestException as e:
         print(f"Error generating client credentials: {e}")
         return None
 
