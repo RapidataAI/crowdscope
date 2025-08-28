@@ -4,15 +4,23 @@ from models import Signal, SignalRun, Response, User
 from config.database import db
 from .rapidata_service import delete_rapidata_order
 
-def get_user_signals(user_id):
-    """Get all signals with run counts for a user"""
-    signals = db.session.query(
+def get_user_signals(user_id, load_all=False):
+    """Get all signals with run counts for a user, or all signals if load_all is True"""
+    # Always join with User and get run counts, filter based on load_all
+    query = db.session.query(
         Signal, 
-        func.count(SignalRun.id).label('run_count')
-    ).outerjoin(SignalRun).filter(Signal.createdBy == user_id).group_by(Signal.id).order_by(Signal.createdAt.desc()).all()
+        func.count(SignalRun.id).label('run_count'),
+        User.email.label('creator_email')
+    ).outerjoin(SignalRun).join(User, Signal.createdBy == User.id)
+    
+    # Filter by user if not loading all
+    if not load_all:
+        query = query.filter(Signal.createdBy == user_id)
+    
+    signals = query.group_by(Signal.id, User.email).order_by(Signal.createdAt.desc()).all()
     
     result = []
-    for signal, run_count in signals:
+    for signal, run_count, creator_email in signals:
         result.append({
             'id': signal.id,
             'name': signal.name,
@@ -23,6 +31,8 @@ def get_user_signals(user_id):
             'runFrequency': signal.runFrequency,
             'active': signal.active,
             'createdAt': signal.createdAt.isoformat(),
+            'createdBy': signal.createdBy,
+            'creatorEmail': creator_email,
             '_count': {
                 'signalRuns': run_count
             }

@@ -15,6 +15,8 @@ interface Signal {
   runFrequency: string;
   active: boolean;
   createdAt: string;
+  createdBy?: string;
+  creatorEmail?: string;
   _count: {
     signalRuns: number;
   };
@@ -85,7 +87,7 @@ function SignalsPageContent() {
               {/* Skeleton Cards */}
               {[1, 2, 3].map((index) => (
                 <div key={index} className="card animate-pulse">
-                  <div className="p-6">
+                  <div className="p-6 flex flex-col h-full">
                     {/* Header with title and toggle */}
                     <div className="flex justify-between items-start mb-4">
                       <div className="h-6 bg-gray-200 rounded w-3/4"></div>
@@ -99,7 +101,7 @@ function SignalsPageContent() {
                     </div>
                     
                     {/* Answer options */}
-                    <div className="space-y-3 mb-6">
+                    <div className="space-y-3 flex-grow">
                       <div className="h-4 bg-gray-200 rounded w-1/2"></div>
                       <div className="flex flex-wrap gap-2 h-16 content-start">
                         <div className="h-6 bg-gray-200 rounded-full w-16"></div>
@@ -108,10 +110,18 @@ function SignalsPageContent() {
                       </div>
                     </div>
                     
-                    {/* Footer stats */}
-                    <div className="flex justify-between items-center text-sm border-t border-gray-200 pt-4">
-                      <div className="h-4 bg-gray-200 rounded w-24"></div>
-                      <div className="h-4 bg-gray-200 rounded w-16"></div>
+                    {/* Creator info and date skeleton */}
+                    <div className="mt-auto">
+                      <div className="flex justify-between items-center mb-3">
+                        <div className="h-3 bg-gray-200 rounded w-32"></div>
+                        <div className="h-3 bg-gray-200 rounded w-16"></div>
+                      </div>
+                      
+                      {/* Footer stats */}
+                      <div className="flex justify-between items-center text-sm border-t border-gray-200 pt-4">
+                        <div className="h-4 bg-gray-200 rounded w-24"></div>
+                        <div className="h-4 bg-gray-200 rounded w-16"></div>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -155,7 +165,7 @@ function SignalsPageContent() {
                       {signal.question}
                     </p>
                     
-                    <div className="space-y-3 mb-6 flex-grow">
+                    <div className="space-y-3 flex-grow">
                       <div className="text-sm font-medium text-gray-700">
                         Answer Options ({signal.answerOptions.length})
                       </div>
@@ -176,7 +186,16 @@ function SignalsPageContent() {
                       </div>
                     </div>
                     
-                    <div className="flex justify-between items-center text-sm border-t border-gray-200 pt-4 mt-auto">
+                    {/* Creator info and date - shown above footer */}
+                    <div className="mt-auto">
+                      {signal.creatorEmail && (
+                        <div className="flex justify-between items-center text-xs text-gray-500 mb-3">
+                          <span>Created by {signal.creatorEmail}</span>
+                          <span>{new Date(signal.createdAt).toLocaleDateString()}</span>
+                        </div>
+                      )}
+                    
+                      <div className="flex justify-between items-center text-sm border-t border-gray-200 pt-4">
                       <div className="flex items-center text-gray-600">
                         <svg className="w-4 h-4 mr-2 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -188,6 +207,7 @@ function SignalsPageContent() {
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                         </svg>
                         {signal._count.signalRuns} runs
+                      </div>
                       </div>
                     </div>
                   </div>

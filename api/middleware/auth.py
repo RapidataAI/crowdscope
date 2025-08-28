@@ -126,3 +126,30 @@ def get_current_access_token() -> Optional[str]:
         except IndexError:
             return None
     return None
+
+def has_role(role: str) -> bool:
+    """Check if the current user has a specific role"""
+    payload = get_current_user_payload()
+    if not payload:
+        return False
+    
+    # Check for roles in different possible claim formats
+    roles = payload.get('roles', [])
+    if isinstance(roles, str):
+        roles = [roles]
+    elif not isinstance(roles, list):
+        roles = []
+    
+    # Also check role claim (singular)
+    role_claim = payload.get('role')
+    if role_claim:
+        if isinstance(role_claim, str):
+            roles.append(role_claim)
+        elif isinstance(role_claim, list):
+            roles.extend(role_claim)
+    
+    return role.lower() in [r.lower() for r in roles]
+
+def is_admin() -> bool:
+    """Check if the current user has Admin role"""
+    return has_role('Admin')

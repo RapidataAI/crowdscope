@@ -15,6 +15,8 @@ interface Signal {
   runFrequency: string;
   active: boolean;
   createdAt: string;
+  createdBy?: string;
+  creatorEmail?: string;
   _count: {
     signalRuns: number;
   };

@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify
-from middleware.auth import token_required, get_current_user_id, get_current_user_email, get_current_access_token
+from middleware.auth import token_required, get_current_user_id, get_current_user_email, get_current_access_token, is_admin
 from services.auth_service import get_or_create_user, ensure_user_has_credentials
 from services.signal_service import (
     get_user_signals, create_signal, update_signal, delete_signal_with_cleanup,
@@ -13,13 +13,15 @@ signals_bp = Blueprint('signals', __name__)
 @signals_bp.route("/api/signals", methods=["GET"])
 @token_required
 def get_signals():
-    """Get all signals with run counts for the authenticated user"""
+    """Get all signals with run counts for the authenticated user (or all signals if Admin)"""
     try:
         user_id = get_current_user_id()
         if not user_id:
             return jsonify({"error": "User ID not available"}), 400
         
-        result = get_user_signals(user_id)
+        # Admin users can see all signals, regular users see only their own
+        load_all = is_admin()
+        result = get_user_signals(user_id, load_all=load_all)
         return jsonify(result)
         
     except Exception as e:
