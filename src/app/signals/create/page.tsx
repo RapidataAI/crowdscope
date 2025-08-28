@@ -12,7 +12,9 @@ function CreateSignalPageContent() {
   const { user } = useRequireAuth();
   const router = useRouter();
   const createSignal = useCreateSignal();
-  const rolesClaim: any = (user as any)?.profile?.roles ?? (user as any)?.profile?.role ?? [];
+  type UserProfileWithRoles = { roles?: string[] | string; role?: string[] | string; email?: string; sub?: string };
+  const profile = (user?.profile ?? {}) as UserProfileWithRoles;
+  const rolesClaim = profile.roles ?? profile.role;
   const rolesArray: string[] = Array.isArray(rolesClaim)
     ? rolesClaim
     : typeof rolesClaim === 'string'
