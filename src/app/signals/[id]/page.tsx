@@ -39,13 +39,15 @@ function SignalDetailPageContent() {
   
   // Use React Query hooks for data fetching and mutations
   const isLoggedIn = !!auth.user;
-  const rolesClaim: any = (auth.user as any)?.profile?.roles ?? (auth.user as any)?.profile?.role ?? [];
-  const rolesArray: string[] = Array.isArray(rolesClaim)
-    ? rolesClaim
-    : typeof rolesClaim === 'string'
-      ? [rolesClaim]
+  type UserProfileWithRoles = { roles?: string[] | string; role?: string[] | string };
+  const profile = (auth.user?.profile ?? {}) as UserProfileWithRoles;
+  const rawRoles = profile.roles ?? profile.role;
+  const rolesArray: string[] = Array.isArray(rawRoles)
+    ? rawRoles
+    : typeof rawRoles === 'string'
+      ? [rawRoles]
       : [];
-  const isAdmin = isLoggedIn && rolesArray.some((r) => String(r).toLowerCase() === 'admin');
+  const isAdmin = isLoggedIn && rolesArray.some((r) => r.toLowerCase() === 'admin');
   const { data: authedSignal, isLoading: isLoadingAuthed, error: authedError } = useSignal(signalId);
   const { data: publicSignal, isLoading: isLoadingPublic, error: publicError } = usePublicSignal(signalId);
   const signal = isLoggedIn ? authedSignal : publicSignal;
