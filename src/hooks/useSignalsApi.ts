@@ -12,6 +12,7 @@ interface Signal {
   question: string;
   answerOptions: string[];
   voteCount: number;
+  runFrequency: string;
   active: boolean;
   createdAt: string;
   _count: {
@@ -48,6 +49,7 @@ interface CreateSignalData {
   question: string;
   answerOptions: string[];
   voteCount: number;
+  runFrequency: string;
   createdBy: string;
   userEmail: string;
 }

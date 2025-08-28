@@ -31,6 +31,7 @@ class Signal(db.Model):
     answerOptions = db.Column(ARRAY(db.String), nullable=False)  # Match Prisma column name
     voteCount = db.Column(db.Integer, nullable=False)  # Match Prisma column name
     countries = db.Column(ARRAY(db.String), nullable=True)  # Array of country codes for filtering
+    runFrequency = db.Column(db.String, nullable=False, default='daily')  # hourly, daily, weekly, monthly
     active = db.Column(db.Boolean, default=True)
     createdAt = db.Column(db.DateTime, default=datetime.utcnow)  # Match Prisma column name
     updatedAt = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)  # Match Prisma column name

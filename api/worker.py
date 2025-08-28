@@ -14,7 +14,7 @@ import uuid
 load_dotenv()
 
 # Database setup for worker
-DATABASE_URL = os.getenv('DATABASE_URL', 'postgresql://postgres:password@localhost:5432/crowdscope')
+DATABASE_URL = os.getenv('DATABASE_URL', 'postgresql://postgres:password@localhost:5433/crowdscope')
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
@@ -58,26 +58,49 @@ def trigger_worker_immediately():
     run_worker_cycle()
 
 def check_signals_need_runs():
-    """Check for signals that need new runs (last run > 1 day ago or no runs)"""
+    """Check for signals that need new runs based on their frequency settings"""
     session = SessionLocal()
     try:
-        # Find signals that either have no runs or their latest run is older than 1 day
-        one_day_ago = datetime.utcnow() - timedelta(days=1)
-        
         # Subquery to get the latest run for each signal
         latest_run_subquery = session.query(
             SignalRun.signalId,
             func.max(SignalRun.startedAt).label('latest_run')
         ).group_by(SignalRun.signalId).subquery()
         
-        # Find signals that need new runs
-        signals_needing_runs = session.query(Signal).outerjoin(
+        # Get all active signals with their latest run times
+        signals_with_runs = session.query(Signal, latest_run_subquery.c.latest_run).outerjoin(
             latest_run_subquery, Signal.id == latest_run_subquery.c.signalId
-        ).filter(
-            # Either no previous runs or latest run is older than 1 day
-            (latest_run_subquery.c.latest_run == None) |
-            (latest_run_subquery.c.latest_run < one_day_ago)
         ).filter(Signal.active == True).all()
+        
+        signals_needing_runs = []
+        now = datetime.utcnow()
+        
+        for signal, latest_run in signals_with_runs:
+            needs_run = False
+            
+            if latest_run is None:
+                # No previous runs - needs a run
+                needs_run = True
+            else:
+                # Check if enough time has passed based on frequency
+                if signal.runFrequency == 'hourly':
+                    threshold = latest_run + timedelta(hours=1)
+                elif signal.runFrequency == 'daily':
+                    threshold = latest_run + timedelta(days=1)
+                elif signal.runFrequency == 'weekly':
+                    threshold = latest_run + timedelta(weeks=1)
+                elif signal.runFrequency == 'monthly':
+                    # Approximate month as 30 days
+                    threshold = latest_run + timedelta(days=30)
+                else:
+                    # Default to daily if unknown frequency
+                    threshold = latest_run + timedelta(days=1)
+                
+                if now >= threshold:
+                    needs_run = True
+            
+            if needs_run:
+                signals_needing_runs.append(signal)
         
         print(f"Found {len(signals_needing_runs)} signals that need new runs")
         
@@ -89,7 +112,7 @@ def check_signals_need_runs():
                 startedAt=datetime.utcnow()
             )
             session.add(new_run)
-            print(f"Created new run for signal {signal.id} ({signal.name})")
+            print(f"Created new run for signal {signal.id} ({signal.name}) - frequency: {signal.runFrequency}")
         
         session.commit()
         
@@ -309,7 +332,7 @@ def run_worker_cycle():
             
         print("=== Worker cycle starting ===")
         
-        # Step 1: Check if any signals need new runs (last run > 1 day ago or no runs)
+        # Step 1: Check if any signals need new runs based on their frequency settings
         print("Step 1: Checking signals that need new runs...")
         check_signals_need_runs()
         

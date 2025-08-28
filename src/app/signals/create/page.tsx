@@ -16,7 +16,8 @@ function CreateSignalPageContent() {
     name: '',
     question: '',
     answerOptions: ['', ''],
-    voteCount: '100'
+    voteCount: '100',
+    runFrequency: 'daily'
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -38,6 +39,7 @@ function CreateSignalPageContent() {
       question: formData.question,
       answerOptions: cleanAnswerOptions,
       voteCount: parseInt(formData.voteCount),
+      runFrequency: formData.runFrequency,
       createdBy: user.profile.sub,
       userEmail: user.profile.email || ''
     }, {
@@ -158,20 +160,41 @@ function CreateSignalPageContent() {
               {/* Vote Count */}
               <div>
                 <label htmlFor="voteCount" className="block text-sm font-semibold text-gray-900 mb-3">
-                  Daily Vote Target
+                  Vote Target per Run
                 </label>
                 <input
                   type="number"
                   id="voteCount"
                   required
-                  min="10"
+                  min="100"
                   max="1000"
                   value={formData.voteCount}
                   onChange={(e) => setFormData(prev => ({ ...prev, voteCount: e.target.value }))}
                   className="input-field"
                 />
                 <p className="text-sm text-gray-600 mt-2">
-                  Number of responses you want to collect per day (10-1000)
+                  Number of responses you want to collect per run (100-1000)
+                </p>
+              </div>
+
+              {/* Run Frequency */}
+              <div>
+                <label htmlFor="runFrequency" className="block text-sm font-semibold text-gray-900 mb-3">
+                  Run Frequency
+                </label>
+                <select
+                  id="runFrequency"
+                  value={formData.runFrequency}
+                  onChange={(e) => setFormData(prev => ({ ...prev, runFrequency: e.target.value }))}
+                  className="input-field"
+                >
+                  <option value="hourly">Hourly - Run every hour</option>
+                  <option value="daily">Daily - Run every day</option>
+                  <option value="weekly">Weekly - Run every week</option>
+                  <option value="monthly">Monthly - Run every month</option>
+                </select>
+                <p className="text-sm text-gray-600 mt-2">
+                  Choose how frequently this signal should collect new responses
                 </p>
               </div>
 

@@ -12,6 +12,7 @@ interface Signal {
   question: string;
   answerOptions: string[];
   voteCount: number;
+  runFrequency: string;
   active: boolean;
   createdAt: string;
   _count: {
@@ -180,7 +181,7 @@ function SignalsPageContent() {
                         <svg className="w-4 h-4 mr-2 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
-                        {signal.voteCount} votes/day
+                        {signal.voteCount} votes/{signal.runFrequency === 'hourly' ? 'hour' : signal.runFrequency === 'daily' ? 'day' : signal.runFrequency === 'weekly' ? 'week' : 'month'}
                       </div>
                       <div className="flex items-center text-gray-600 font-medium">
                         <svg className="w-4 h-4 mr-2 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">

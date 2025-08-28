@@ -126,7 +126,7 @@ function SignalDetailPageContent() {
                 {signal.active ? 'Active' : 'Inactive'}
               </span>
               <span className="text-sm text-gray-600">
-                {signal.voteCount} votes/day
+                {signal.voteCount} votes/{signal.runFrequency === 'hourly' ? 'hour' : signal.runFrequency === 'daily' ? 'day' : signal.runFrequency === 'weekly' ? 'week' : 'month'}
               </span>
               <span className="text-sm text-gray-600">
                 {signal.runs.length} completed runs

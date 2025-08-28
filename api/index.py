@@ -17,7 +17,7 @@ app = Flask(__name__)
 CORS(app)
 
 # Database configuration
-app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'postgresql://postgres:password@localhost:5432/crowdscope')
+app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'postgresql://postgres:password@localhost:5433/crowdscope')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Initialize database, migrations, and auth
@@ -90,6 +90,7 @@ def get_signals():
                 'answerOptions': signal.answerOptions,  # Use model's camelCase attribute
                 'voteCount': signal.voteCount,          # Use model's camelCase attribute
                 'countries': signal.countries,          # Array of country codes
+                'runFrequency': signal.runFrequency,    # Add runFrequency to response
                 'active': signal.active,
                 'createdAt': signal.createdAt.isoformat(),  # Use model's camelCase attribute
                 '_count': {
@@ -108,7 +109,7 @@ def create_signal():
     try:
         data = request.get_json()
         
-        required_fields = ["name", "question", "answerOptions", "voteCount"]
+        required_fields = ["name", "question", "answerOptions", "voteCount", "runFrequency"]
         for field in required_fields:
             if field not in data:
                 return jsonify({"error": f"Missing required field: {field}"}), 400
@@ -135,6 +136,11 @@ def create_signal():
         if not ensure_user_has_credentials(user, access_token):
             return jsonify({"error": "Failed to generate required client credentials"}), 500
         
+        # Validate runFrequency
+        valid_frequencies = ['hourly', 'daily', 'weekly', 'monthly']
+        if data["runFrequency"] not in valid_frequencies:
+            return jsonify({"error": f"Invalid runFrequency. Must be one of: {valid_frequencies}"}), 400
+
         # Create signal
         signal = Signal(
             name=data["name"],
@@ -142,6 +148,7 @@ def create_signal():
             answerOptions=data["answerOptions"],  # Use camelCase column name
             voteCount=int(data["voteCount"]),     # Use camelCase column name
             countries=data.get("countries"),      # Optional array of country codes
+            runFrequency=data["runFrequency"],    # Add runFrequency field
             createdBy=user_id                     # Use authenticated user ID
         )
         
@@ -157,6 +164,7 @@ def create_signal():
             'answerOptions': signal.answerOptions,  # Use model's camelCase attribute
             'voteCount': signal.voteCount,          # Use model's camelCase attribute
             'countries': signal.countries,          # Array of country codes
+            'runFrequency': signal.runFrequency,    # Add runFrequency to response
             'active': signal.active,
             'createdAt': signal.createdAt.isoformat()  # Use model's camelCase attribute
         }), 201
@@ -202,6 +210,7 @@ def update_signal(signal_id):
             'answerOptions': signal.answerOptions,  # Use model's camelCase attribute
             'voteCount': signal.voteCount,          # Use model's camelCase attribute
             'countries': signal.countries,          # Array of country codes
+            'runFrequency': signal.runFrequency,    # Add runFrequency to response
             'active': signal.active,
             'createdAt': signal.createdAt.isoformat()  # Use model's camelCase attribute
         })
@@ -433,6 +442,7 @@ def get_signal_details(signal_id):
             'answerOptions': signal.answerOptions,
             'voteCount': signal.voteCount,
             'countries': signal.countries,
+            'runFrequency': signal.runFrequency,    # Add runFrequency to response
             'active': signal.active,
             'createdAt': signal.createdAt.isoformat(),
             'runs': runs_data
