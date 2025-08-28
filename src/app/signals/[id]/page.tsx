@@ -1,14 +1,14 @@
 'use client';
 
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
-import { AuthGuard } from "@/components/AuthGuard";
+import { useParams, useRouter, usePathname } from "next/navigation";
+import { useAuth } from "react-oidc-context";
 import { Header } from "@/components/Header";
 import { SignalChart } from "@/components/SignalChart";
 import { RunsList } from "@/components/RunsList";
 import { SignalActions } from "@/components/SignalActions";
 import { CountryFlags } from "@/components/CountryFlags";
-import { useSignal, useExecuteSignal, useDeleteSignal, useDeleteRun } from "@/hooks/useSignalsApi";
+import { useSignal, usePublicSignal, useExecuteSignal, useDeleteSignal, useDeleteRun } from "@/hooks/useSignalsApi";
 import { useGlobalConfirmation } from "@/app/providers";
 
 // Generate distinct colors for options
@@ -30,13 +30,20 @@ const generateColors = (count: number) => {
 };
 
 function SignalDetailPageContent() {
+  const auth = useAuth();
   const { confirm } = useGlobalConfirmation();
   const params = useParams();
   const router = useRouter();
+  const pathname = usePathname();
   const signalId = params.id as string;
   
   // Use React Query hooks for data fetching and mutations
-  const { data: signal, isLoading, error } = useSignal(signalId);
+  const isLoggedIn = !!auth.user;
+  const { data: authedSignal, isLoading: isLoadingAuthed, error: authedError } = useSignal(signalId);
+  const { data: publicSignal, isLoading: isLoadingPublic, error: publicError } = usePublicSignal(signalId);
+  const signal = isLoggedIn ? authedSignal : publicSignal;
+  const isLoading = isLoggedIn ? isLoadingAuthed : isLoadingPublic;
+  const error = isLoggedIn ? authedError : publicError;
   const executeSignal = useExecuteSignal();
   const deleteSignal = useDeleteSignal();
   const deleteRun = useDeleteRun();
@@ -96,14 +103,23 @@ function SignalDetailPageContent() {
   }
 
   if (error || !signal) {
+    // If unauthenticated and 404 from public endpoint, offer sign-in for private signals
+    const isProbablyPrivate = !isLoggedIn && (error as Error | undefined)?.message?.includes('404');
     return (
       <div className="min-h-screen bg-gray-50">
         <Header />
         <div className="container mx-auto px-6 py-12">
           <div className="max-w-7xl mx-auto">
             <div className="text-center">
-              <h1 className="text-2xl font-bold text-gray-900 mb-4">Error</h1>
-              <p className="text-gray-600">{error?.message || 'Signal not found'}</p>
+              <h1 className="text-2xl font-bold text-gray-900 mb-4">{isProbablyPrivate ? 'Private Signal' : 'Error'}</h1>
+              {isProbablyPrivate ? (
+                <div className="space-y-4">
+                  <p className="text-gray-600">This signal is private. Please sign in to access it.</p>
+                  <button className="btn-primary" onClick={() => auth.signinRedirect({ url_state: pathname })}>Sign In</button>
+                </div>
+              ) : (
+                <p className="text-gray-600">{(error as Error | undefined)?.message || 'Signal not found'}</p>
+              )}
               <Link href="/signals" className="text-blue-600 hover:text-blue-700 mt-4 inline-block">
                 ← Back to Signals
               </Link>
@@ -138,11 +154,13 @@ function SignalDetailPageContent() {
               </span>
             </div>
           </div>
-          <SignalActions
-            isActive={signal.active}
-            onExecute={handleExecuteSignal}
-            onDelete={handleDeleteSignal}
-          />
+          {isLoggedIn && (
+            <SignalActions
+              isActive={signal.active}
+              onExecute={handleExecuteSignal}
+              onDelete={handleDeleteSignal}
+            />
+          )}
         </div>
 
         {/* Signal Details */}
@@ -191,7 +209,7 @@ function SignalDetailPageContent() {
         <SignalChart runs={signal.runs} answerOptions={signal.answerOptions} />
 
         {/* Execute Signal CTA for empty state */}
-        {signal.runs.length === 0 && signal.active && (
+        {isLoggedIn && signal.runs.length === 0 && signal.active && (
           <div className="card text-center mt-8">
             <div className="p-12">
               <button
@@ -205,7 +223,7 @@ function SignalDetailPageContent() {
         )}
 
         {/* Runs History */}
-        <RunsList runs={signal.runs} onDeleteRun={handleDeleteRun} />
+        <RunsList runs={signal.runs} onDeleteRun={isLoggedIn ? handleDeleteRun : undefined} />
         </div>
       </div>
     </div>
@@ -213,9 +231,5 @@ function SignalDetailPageContent() {
 }
 
 export default function SignalDetailPage() {
-  return (
-    <AuthGuard>
-      <SignalDetailPageContent />
-    </AuthGuard>
-  );
+  return <SignalDetailPageContent />;
 }

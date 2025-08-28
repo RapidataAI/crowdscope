@@ -3,7 +3,8 @@ from middleware.auth import token_required, get_current_user_id, get_current_use
 from services.auth_service import get_or_create_user, ensure_user_has_credentials
 from services.signal_service import (
     get_user_signals, create_signal, update_signal, delete_signal_with_cleanup,
-    get_signal_details, execute_signal, delete_signal_run
+    get_signal_details, execute_signal, delete_signal_run,
+    get_public_signals, get_public_signal_details
 )
 from services.worker_service import run_worker_cycle_logic
 from config.database import db
@@ -61,6 +62,16 @@ def create_signal_route():
         if data["runFrequency"] not in valid_frequencies:
             return jsonify({"error": f"Invalid runFrequency. Must be one of: {valid_frequencies}"}), 400
 
+        # Enforce visibility: only Admins can set public visibility
+        try:
+            admin = is_admin()
+        except Exception:
+            admin = False
+        if not admin:
+            data["isPublic"] = False
+        else:
+            data["isPublic"] = bool(data.get("isPublic", False))
+
         signal = create_signal(user_id, data)
         
         # Trigger worker
@@ -77,6 +88,7 @@ def create_signal_route():
             'voteCount': signal.voteCount,
             'countries': signal.countries,
             'runFrequency': signal.runFrequency,
+            'isPublic': signal.isPublic,
             'active': signal.active,
             'createdAt': signal.createdAt.isoformat()
         }), 201
@@ -102,7 +114,21 @@ def update_signal_route(signal_id):
         if "active" in data and not isinstance(data["active"], bool):
             return jsonify({"error": "Active field must be boolean"}), 400
         
-        signal = update_signal(signal_id, user_id, data)
+        # Only admins can modify visibility
+        if "isPublic" in data:
+            if not is_admin():
+                return jsonify({"error": "Only admins can change visibility"}), 403
+            if not isinstance(data["isPublic"], bool):
+                return jsonify({"error": "isPublic field must be boolean"}), 400
+        
+        # Determine admin once
+        admin = False
+        try:
+            admin = is_admin()
+        except Exception:
+            admin = False
+
+        signal = update_signal(signal_id, user_id, data, is_admin=admin)
         if not signal:
             return jsonify({"error": "Signal not found or access denied"}), 404
         
@@ -114,6 +140,7 @@ def update_signal_route(signal_id):
             'voteCount': signal.voteCount,
             'countries': signal.countries,
             'runFrequency': signal.runFrequency,
+            'isPublic': signal.isPublic,
             'active': signal.active,
             'createdAt': signal.createdAt.isoformat()
         })
@@ -159,6 +186,26 @@ def get_signal_details_route(signal_id):
         
     except Exception as e:
         return jsonify({"error": "Failed to fetch signal details", "details": str(e)}), 500
+
+# Public endpoints (no authentication required)
+@signals_bp.route("/api/public/signals", methods=["GET"])
+def get_public_signals_route():
+    try:
+        result = get_public_signals()
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({"error": "Failed to fetch public signals", "details": str(e)}), 500
+
+
+@signals_bp.route("/api/public/signals/<signal_id>/details", methods=["GET"])
+def get_public_signal_details_route(signal_id):
+    try:
+        details = get_public_signal_details(signal_id)
+        if not details:
+            return jsonify({"error": "Signal not found or not public"}), 404
+        return jsonify(details)
+    except Exception as e:
+        return jsonify({"error": "Failed to fetch public signal details", "details": str(e)}), 500
 
 @signals_bp.route("/api/signals/execute", methods=["POST"])
 @token_required

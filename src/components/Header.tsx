@@ -1,10 +1,13 @@
 'use client';
 
 import Link from "next/link";
-import { useRequireAuth } from "@/hooks/useRequireAuth";
+import { useAuth } from "react-oidc-context";
 
 export function Header() {
-  const { displayName, signOut } = useRequireAuth();
+  const auth = useAuth();
+  const isAuthenticated = !!auth.user;
+  const displayName = auth.user?.profile?.name || auth.user?.profile?.email || '';
+  const initial = isAuthenticated ? (displayName?.charAt(0)?.toUpperCase() || '?') : '';
 
   return (
     <header className="bg-white/80 backdrop-blur-lg border-b border-gray-200 sticky top-0 z-50">
@@ -31,22 +34,29 @@ export function Header() {
             </nav>
           </div>
           <div className="flex items-center gap-4">
-            <div className="hidden sm:flex items-center gap-2">
-              <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
-                <span className="text-green-700 font-medium text-sm">
-                  {displayName?.charAt(0)?.toUpperCase()}
-                </span>
+            {isAuthenticated && (
+              <div className="hidden sm:flex items-center gap-2">
+                <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                  <span className="text-green-700 font-medium text-sm">{initial}</span>
+                </div>
+                <span className="text-sm text-gray-600">{displayName}</span>
               </div>
-              <span className="text-sm text-gray-600">
-                {displayName}
-              </span>
-            </div>
-            <button
-              onClick={signOut}
-              className="text-sm text-gray-700 bg-gray-100 hover:bg-gray-200 hover:text-gray-900 px-3 py-2 rounded-lg border border-gray-200 hover:border-gray-300 transition-all duration-200"
-            >
-              Sign Out
-            </button>
+            )}
+            {isAuthenticated ? (
+              <button
+                onClick={() => auth.signoutRedirect()}
+                className="text-sm text-gray-700 bg-gray-100 hover:bg-gray-200 hover:text-gray-900 px-3 py-2 rounded-lg border border-gray-200 hover:border-gray-300 transition-all duration-200"
+              >
+                Sign Out
+              </button>
+            ) : (
+              <button
+                onClick={() => auth.signinRedirect()}
+                className="text-sm text-white bg-blue-600 hover:bg-blue-700 px-3 py-2 rounded-lg transition-all duration-200"
+              >
+                Sign In
+              </button>
+            )}
           </div>
         </div>
       </div>

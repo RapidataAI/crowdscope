@@ -13,6 +13,7 @@ interface Signal {
   answerOptions: string[];
   voteCount: number;
   runFrequency: string;
+  isPublic: boolean;
   active: boolean;
   createdAt: string;
   createdBy?: string;
@@ -54,6 +55,7 @@ interface CreateSignalData {
   runFrequency: string;
   createdBy: string;
   userEmail: string;
+  isPublic?: boolean;
 }
 
 // Query Keys - centralized for easy cache management
@@ -120,6 +122,36 @@ export const useSignal = (signalId: string) => {
     }),
     enabled: !!signalId, // Only run query if signalId exists
     staleTime: 2 * 60 * 1000, // 2 minutes (fresher for details)
+  });
+};
+
+// Public (unauthenticated) queries
+export const usePublicSignals = () => {
+  return useQuery({
+    queryKey: signalKeys.list({ public: true }),
+    queryFn: async () => {
+      const res = await fetch('/api/public/signals');
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+      }
+      return res.json();
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+};
+
+export const usePublicSignal = (signalId: string) => {
+  return useQuery({
+    queryKey: signalKeys.detail(`public-${signalId}`),
+    queryFn: async () => {
+      const res = await fetch(`/api/public/signals/${signalId}/details`);
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+      }
+      return res.json();
+    },
+    enabled: !!signalId,
+    staleTime: 2 * 60 * 1000,
   });
 };
 

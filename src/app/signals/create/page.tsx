@@ -12,12 +12,20 @@ function CreateSignalPageContent() {
   const { user } = useRequireAuth();
   const router = useRouter();
   const createSignal = useCreateSignal();
+  const rolesClaim: any = (user as any)?.profile?.roles ?? (user as any)?.profile?.role ?? [];
+  const rolesArray: string[] = Array.isArray(rolesClaim)
+    ? rolesClaim
+    : typeof rolesClaim === 'string'
+      ? [rolesClaim]
+      : [];
+  const isAdmin = rolesArray.some((r) => String(r).toLowerCase() === 'admin');
   const [formData, setFormData] = useState({
     name: '',
     question: '',
     answerOptions: ['', ''],
     voteCount: '100',
-    runFrequency: 'daily'
+    runFrequency: 'daily',
+    isPublic: false,
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -41,7 +49,8 @@ function CreateSignalPageContent() {
       voteCount: parseInt(formData.voteCount),
       runFrequency: formData.runFrequency,
       createdBy: user.profile.sub,
-      userEmail: user.profile.email || ''
+      userEmail: user.profile.email || '',
+      ...(isAdmin ? { isPublic: formData.isPublic } : {}),
     }, {
       onSuccess: () => {
         router.push('/signals');
@@ -197,6 +206,36 @@ function CreateSignalPageContent() {
                   Choose how frequently this signal should collect new responses
                 </p>
               </div>
+
+              {/* Visibility (Admins only) */}
+              {isAdmin && (
+                <div>
+                  <label className="block text-sm font-semibold text-gray-900 mb-3">
+                    Visibility
+                  </label>
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setFormData(prev => ({ ...prev, isPublic: !prev.isPublic }))}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-all duration-200 ${
+                        formData.isPublic ? 'bg-green-500' : 'bg-gray-300'
+                      }`}
+                    >
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-200 shadow-sm ${
+                          formData.isPublic ? 'translate-x-6' : 'translate-x-1'
+                        }`}
+                      />
+                    </button>
+                    <span className="text-gray-700">
+                      {formData.isPublic ? 'Public (visible to everyone)' : 'Private (visible only to you)'}
+                    </span>
+                  </div>
+                  <p className="text-sm text-gray-600 mt-2">
+                    Only admins can change visibility. Public signals are visible without signing in.
+                  </p>
+                </div>
+              )}
 
               {/* Submit */}
               <div className="flex flex-col sm:flex-row gap-4 pt-6 border-t border-gray-200">

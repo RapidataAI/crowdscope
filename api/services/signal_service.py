@@ -29,6 +29,7 @@ def get_user_signals(user_id, load_all=False):
             'voteCount': signal.voteCount,
             'countries': signal.countries,
             'runFrequency': signal.runFrequency,
+            'isPublic': signal.isPublic,
             'active': signal.active,
             'createdAt': signal.createdAt.isoformat(),
             'createdBy': signal.createdBy,
@@ -48,6 +49,7 @@ def create_signal(user_id, signal_data):
         voteCount=int(signal_data["voteCount"]),
         countries=signal_data.get("countries"),
         runFrequency=signal_data["runFrequency"],
+        isPublic=bool(signal_data.get("isPublic", False)),
         createdBy=user_id
     )
     
@@ -55,14 +57,20 @@ def create_signal(user_id, signal_data):
     db.session.commit()
     return signal
 
-def update_signal(signal_id, user_id, update_data):
+def update_signal(signal_id, user_id, update_data, is_admin=False):
     """Update a signal"""
     signal = db.session.get(Signal, signal_id)
-    if not signal or signal.createdBy != user_id:
+    if not signal:
+        return None
+    # Only owner can update unless admin
+    if not is_admin and signal.createdBy != user_id:
         return None
     
     if "active" in update_data:
         signal.active = update_data["active"]
+        signal.updatedAt = datetime.utcnow()
+    if "isPublic" in update_data and isinstance(update_data["isPublic"], bool):
+        signal.isPublic = update_data["isPublic"]
         signal.updatedAt = datetime.utcnow()
     
     db.session.commit()
@@ -134,6 +142,97 @@ def get_signal_details(signal_id, user_id):
         'voteCount': signal.voteCount,
         'countries': signal.countries,
         'runFrequency': signal.runFrequency,
+        'isPublic': signal.isPublic,
+        'active': signal.active,
+        'createdAt': signal.createdAt.isoformat(),
+        'runs': runs_data
+    }
+
+def get_public_signals():
+    """Get all public (and active) signals with run counts and creator email"""
+    query = db.session.query(
+        Signal,
+        func.count(SignalRun.id).label('run_count'),
+        User.email.label('creator_email')
+    ).outerjoin(SignalRun).join(User, Signal.createdBy == User.id)
+
+    query = query.filter(Signal.isPublic.is_(True))
+
+    # It's reasonable to show only active public signals in the public listing
+    query = query.filter(Signal.active.is_(True))
+
+    signals = query.group_by(Signal.id, User.email).order_by(Signal.createdAt.desc()).all()
+
+    result = []
+    for signal, run_count, creator_email in signals:
+        result.append({
+            'id': signal.id,
+            'name': signal.name,
+            'question': signal.question,
+            'answerOptions': signal.answerOptions,
+            'voteCount': signal.voteCount,
+            'countries': signal.countries,
+            'runFrequency': signal.runFrequency,
+            'isPublic': signal.isPublic,
+            'active': signal.active,
+            'createdAt': signal.createdAt.isoformat(),
+            'createdBy': signal.createdBy,
+            'creatorEmail': creator_email,
+            '_count': {
+                'signalRuns': run_count
+            }
+        })
+    return result
+
+def get_public_signal_details(signal_id):
+    """Get details for a public signal (only if isPublic is True)."""
+    signal = db.session.get(Signal, signal_id)
+    if not signal or not signal.isPublic:
+        return None
+
+    # Optional: Only show details for active public signals
+    # Remove this check if you want to show inactive ones too
+    if not signal.active:
+        return None
+
+    runs = db.session.query(SignalRun).filter(
+        SignalRun.signalId == signal_id
+    ).order_by(SignalRun.startedAt.desc()).all()
+
+    runs_data = []
+    for run in runs:
+        responses = db.session.query(Response).filter(
+            Response.signalRunId == run.id
+        ).all()
+
+        total_votes = sum(r.voteCount for r in responses)
+        response_data = {}
+        percentages = {}
+
+        for response in responses:
+            response_data[response.option] = response.voteCount
+            percentages[response.option] = (response.voteCount / total_votes * 100) if total_votes > 0 else 0
+
+        runs_data.append({
+            'id': run.id,
+            'status': run.status,
+            'startedAt': run.startedAt.isoformat() if run.startedAt else None,
+            'completedAt': run.completedAt.isoformat() if run.completedAt else None,
+            'rapidataOrderId': run.rapidataOrderId,
+            'totalVotes': total_votes,
+            'responses': response_data,
+            'percentages': percentages
+        })
+
+    return {
+        'id': signal.id,
+        'name': signal.name,
+        'question': signal.question,
+        'answerOptions': signal.answerOptions,
+        'voteCount': signal.voteCount,
+        'countries': signal.countries,
+        'runFrequency': signal.runFrequency,
+        'isPublic': signal.isPublic,
         'active': signal.active,
         'createdAt': signal.createdAt.isoformat(),
         'runs': runs_data

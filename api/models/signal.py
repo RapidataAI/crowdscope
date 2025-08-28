@@ -16,6 +16,7 @@ class Signal(db.Model):
     voteCount = db.Column(db.Integer, nullable=False)
     countries = db.Column(ARRAY(db.String), nullable=True)
     runFrequency = db.Column(db.String, nullable=False, default='daily')
+    isPublic = db.Column(db.Boolean, nullable=False, default=False)
     active = db.Column(db.Boolean, default=True)
     createdAt = db.Column(db.DateTime, default=datetime.utcnow)
     updatedAt = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
