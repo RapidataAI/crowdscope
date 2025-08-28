@@ -23,7 +23,7 @@ interface Signal {
 function SignalCard({ signal, isLoggedIn, onToggle }: { signal: Signal; isLoggedIn: boolean; onToggle?: (id: string, active: boolean) => void }) {
   return (
     <Link key={signal.id} href={`/signals/${signal.id}`} className="card-interactive group">
-      <div className="p-6 flex flex-col h-full">
+      <div className="p-6 flex flex-col h-full min-h-72">
         <div className="flex justify-between items-start mb-4">
           <h3 className="text-xl font-semibold text-gray-900 group-hover:text-blue-600 transition-colors duration-200">{signal.name}</h3>
           <div className="relative flex items-center gap-2">
@@ -46,13 +46,49 @@ function SignalCard({ signal, isLoggedIn, onToggle }: { signal: Signal; isLogged
         <p className="text-gray-600 mb-6 leading-relaxed line-clamp-3">{signal.question}</p>
         <div className="space-y-3 flex-grow">
           <div className="text-sm font-medium text-gray-700">Answer Options ({signal.answerOptions.length})</div>
-          <div className="flex flex-wrap gap-2 h-16 content-start">
-            {signal.answerOptions.slice(0, 3).map((option, index) => (
-              <span key={index} className="badge-neutral text-xs px-3 py-1.5">{option}</span>
-            ))}
-            {signal.answerOptions.length > 3 && (
-              <span className="badge-neutral text-xs px-3 py-1.5">+{signal.answerOptions.length - 3} more</span>
-            )}
+          <div className="flex items-center gap-2 overflow-hidden w-full mb-3">
+            {(() => {
+              const options = signal.answerOptions || [];
+              const qLen = (signal.question || '').length;
+              // Dynamically adjust how many characters we can show based on question length
+              const maxChars = qLen < 60 ? 28 : qLen < 120 ? 20 : 14;
+              let count = 0;
+              let sum = 0;
+              for (let i = 0; i < options.length; i++) {
+                const next = String(options[i] ?? '');
+                const nextLen = next.length;
+                if (count === 0) {
+                  // Always show at least one option
+                  count = 1;
+                  sum = nextLen;
+                  continue;
+                }
+                if (sum + 2 + nextLen <= maxChars && count < 3) { // +2 accounts for visual spacing
+                  sum += 2 + nextLen;
+                  count++;
+                } else {
+                  break;
+                }
+              }
+              const visible = options.slice(0, Math.max(1, count));
+              const remaining = Math.max(0, options.length - visible.length);
+              return (
+                <>
+                  {visible.map((opt, idx) => (
+                    <span
+                      key={idx}
+                      className="badge-neutral text-xs px-3 py-1 truncate max-w-[10rem]"
+                      title={opt}
+                    >
+                      {opt}
+                    </span>
+                  ))}
+                  {remaining > 0 && (
+                    <span className="badge-neutral text-xs px-2 py-1 shrink-0">+{remaining} more</span>
+                  )}
+                </>
+              );
+            })()}
           </div>
         </div>
         <div className="mt-auto">
@@ -199,7 +235,7 @@ function SignalsPageContent() {
                     href="/signals/create"
                     className="card-interactive group border border-gray-200 hover:border-blue-300 bg-gray-50/50 hover:bg-blue-50/50"
                   >
-                    <div className="p-6 flex flex-col h-full items-center justify-center text-center">
+                  <div className="p-6 flex flex-col h-full min-h-72 items-center justify-center text-center">
                       <div className="w-12 h-12 bg-blue-100 rounded-xl mb-4 flex items-center justify-center group-hover:bg-blue-200 transition-colors duration-200">
                         <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
