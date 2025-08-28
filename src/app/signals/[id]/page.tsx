@@ -8,7 +8,7 @@ import { SignalChart } from "@/components/SignalChart";
 import { RunsList } from "@/components/RunsList";
 import { SignalActions } from "@/components/SignalActions";
 import { CountryFlags } from "@/components/CountryFlags";
-import { useSignal, usePublicSignal, useExecuteSignal, useDeleteSignal, useDeleteRun } from "@/hooks/useSignalsApi";
+import { useSignal, usePublicSignal, useExecuteSignal, useDeleteSignal, useDeleteRun, useUpdateSignalVisibility } from "@/hooks/useSignalsApi";
 import { useGlobalConfirmation } from "@/app/providers";
 
 // Generate distinct colors for options
@@ -39,6 +39,13 @@ function SignalDetailPageContent() {
   
   // Use React Query hooks for data fetching and mutations
   const isLoggedIn = !!auth.user;
+  const rolesClaim: any = (auth.user as any)?.profile?.roles ?? (auth.user as any)?.profile?.role ?? [];
+  const rolesArray: string[] = Array.isArray(rolesClaim)
+    ? rolesClaim
+    : typeof rolesClaim === 'string'
+      ? [rolesClaim]
+      : [];
+  const isAdmin = isLoggedIn && rolesArray.some((r) => String(r).toLowerCase() === 'admin');
   const { data: authedSignal, isLoading: isLoadingAuthed, error: authedError } = useSignal(signalId);
   const { data: publicSignal, isLoading: isLoadingPublic, error: publicError } = usePublicSignal(signalId);
   const signal = isLoggedIn ? authedSignal : publicSignal;
@@ -47,6 +54,7 @@ function SignalDetailPageContent() {
   const executeSignal = useExecuteSignal();
   const deleteSignal = useDeleteSignal();
   const deleteRun = useDeleteRun();
+  const updateVisibility = useUpdateSignalVisibility();
 
   // Action handlers using React Query mutations
   const handleExecuteSignal = async () => {
@@ -155,11 +163,38 @@ function SignalDetailPageContent() {
             </div>
           </div>
           {isLoggedIn && (
-            <SignalActions
-              isActive={signal.active}
-              onExecute={handleExecuteSignal}
-              onDelete={handleDeleteSignal}
-            />
+            <div className="flex items-center gap-2">
+              {isAdmin && (
+                <button
+                  onClick={() => updateVisibility.mutate({ signalId, isPublic: !signal.isPublic })}
+                  className={`${
+                    signal.isPublic
+                      ? 'p-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50'
+                      : 'p-2 text-gray-600 hover:text-gray-700 hover:bg-gray-100'
+                  } rounded-md transition-colors`}
+                  title={signal.isPublic ? 'Public' : 'Private'}
+                >
+                  {signal.isPublic ? (
+                    // Public: lock open (Heroicons outline style)
+                    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <path d="M9.75 9.75V7.5a3 3 0 0 1 5.97-.25" />
+                      <path d="M5.25 10.5h13.5a.75.75 0 0 1 .75.75v7.5a.75.75 0 0 1-.75.75H5.25a.75.75 0 0 1-.75-.75v-7.5a.75.75 0 0 1 .75-.75z" />
+                    </svg>
+                  ) : (
+                    // Private: lock closed (Heroicons outline style)
+                    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <path d="M16.5 10.5V8.25a4.5 4.5 0 1 0-9 0V10.5" />
+                      <path d="M5.25 10.5h13.5a.75.75 0 0 1 .75.75v7.5a.75.75 0 0 1-.75.75H5.25a.75.75 0 0 1-.75-.75v-7.5a.75.75 0 0 1 .75-.75z" />
+                    </svg>
+                  )}
+                </button>
+              )}
+              <SignalActions
+                isActive={signal.active}
+                onExecute={handleExecuteSignal}
+                onDelete={handleDeleteSignal}
+              />
+            </div>
           )}
         </div>
 

@@ -235,6 +235,49 @@ export const useUpdateSignalStatus = () => {
 };
 
 /**
+ * Update signal visibility (public/private) — admin only
+ */
+export const useUpdateSignalVisibility = () => {
+  const { mutationFn } = useAuthenticatedApi();
+  const { showError } = useGlobalNotifications();
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: ({ signalId, isPublic }: { signalId: string; isPublic: boolean }) => mutationFn({
+      url: `/api/signals/${signalId}`,
+      method: 'PATCH',
+      body: { isPublic },
+    }),
+    onMutate: async ({ signalId, isPublic }) => {
+      await queryClient.cancelQueries({ queryKey: signalKeys.lists() });
+      const previousSignals = queryClient.getQueryData<Signal[]>(signalKeys.list());
+
+      // Optimistic update in list
+      queryClient.setQueryData<Signal[]>(signalKeys.list(), (old) =>
+        old?.map(signal => signal.id === signalId ? { ...signal, isPublic } : signal)
+      );
+
+      // Optimistic update in detail
+      queryClient.setQueryData<SignalDetail>(signalKeys.detail(signalId), (old) =>
+        old ? { ...old, isPublic } : old
+      );
+      
+      return { previousSignals };
+    },
+    onError: (error: Error, _vars, context) => {
+      if (context?.previousSignals) {
+        queryClient.setQueryData(signalKeys.list(), context.previousSignals);
+      }
+      showError(`Failed to update visibility: ${error.message}`);
+    },
+    onSettled: (_data, _error, { signalId }) => {
+      queryClient.invalidateQueries({ queryKey: signalKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: signalKeys.detail(signalId) });
+    },
+  });
+};
+
+/**
  * Execute a signal
  */
 export const useExecuteSignal = () => {
