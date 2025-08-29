@@ -76,10 +76,10 @@ export function SignalChart({ runs, answerOptions }: SignalChartProps) {
       const date = new Date(data.completedAt as string).toLocaleDateString();
       
       return (
-        <div className="bg-white border border-gray-300 rounded-lg p-3 shadow-lg">
-          <p className="font-medium text-gray-900">Run #{label}</p>
-          <p className="text-sm text-gray-700 mb-2">{date}</p>
-          <p className="text-sm text-gray-700 mb-2">Total: {data.totalVotes as number} votes</p>
+        <div className="rounded-lg p-3 shadow-lg bg-white border border-gray-300 dark:bg-white/5 dark:border-white/10">
+          <p className="font-medium text-gray-900 dark:text-white">Run #{label}</p>
+          <p className="text-sm text-gray-700 dark:text-gray-300 mb-2">{date}</p>
+          <p className="text-sm text-gray-700 dark:text-gray-300 mb-2">Total: {data.totalVotes as number} votes</p>
           <div className="space-y-1">
             {answerOptions.map((option, index) => (
               <div key={option} className="flex items-center justify-between text-sm">
@@ -88,11 +88,11 @@ export function SignalChart({ runs, answerOptions }: SignalChartProps) {
                     className="w-3 h-3 rounded mr-2" 
                     style={{ backgroundColor: colors[index] }}
                   ></div>
-                  <span className="text-gray-900">{option}:</span>
+                  <span className="text-gray-900 dark:text-white">{option}:</span>
                 </div>
                 <div className="ml-2">
-                  <span className="font-medium text-gray-900">{(data.responses as Record<string, number>)[option] || 0}</span>
-                  <span className="text-gray-700 ml-1">
+                  <span className="font-medium text-gray-900 dark:text-white">{(data.responses as Record<string, number>)[option] || 0}</span>
+                  <span className="text-gray-700 dark:text-gray-300 ml-1">
                     ({((data[option] as number) || 0).toFixed(1)}%)
                   </span>
                 </div>
@@ -107,16 +107,16 @@ export function SignalChart({ runs, answerOptions }: SignalChartProps) {
 
   if (runs.length === 0) {
     return (
-      <div className="bg-gray-50 rounded-lg p-12 text-center">
-        <h3 className="text-lg font-medium text-gray-900 mb-2">No completed runs yet</h3>
-        <p className="text-gray-600 mb-4">Execute this signal to see vote trends over time.</p>
+      <div className="card p-12 text-center">
+        <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No completed runs yet</h3>
+        <p className="text-gray-600 dark:text-gray-300 mb-4">Execute this signal to see vote trends over time.</p>
       </div>
     );
   }
 
   return (
-    <div className="bg-white border border-gray-200 rounded-lg p-6">
-      <h2 className="text-xl font-semibold text-gray-900 mb-6">Vote Trends Over Time</h2>
+    <div className="card p-6">
+      <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-6">Vote Trends Over Time</h2>
       <div className="h-96">
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart

@@ -99,7 +99,7 @@ function SignalDetailPageContent() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-background">
         <Header />
         <div className="container mx-auto px-6 py-12">
           <div className="max-w-7xl mx-auto">
@@ -116,19 +116,19 @@ function SignalDetailPageContent() {
     // If unauthenticated and 404 from public endpoint, offer sign-in for private signals
     const isProbablyPrivate = !isLoggedIn && (error as Error | undefined)?.message?.includes('404');
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-background">
         <Header />
         <div className="container mx-auto px-6 py-12">
           <div className="max-w-7xl mx-auto">
             <div className="text-center">
-              <h1 className="text-2xl font-bold text-gray-900 mb-4">{isProbablyPrivate ? 'Private Signal' : 'Error'}</h1>
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">{isProbablyPrivate ? 'Private Signal' : 'Error'}</h1>
               {isProbablyPrivate ? (
                 <div className="space-y-4">
-                  <p className="text-gray-600">This signal is private. Please sign in to access it.</p>
+                  <p className="text-gray-600 dark:text-gray-300">This signal is private. Please sign in to access it.</p>
                   <button className="btn-primary" onClick={() => auth.signinRedirect({ url_state: pathname })}>Sign In</button>
                 </div>
               ) : (
-                <p className="text-gray-600">{(error as Error | undefined)?.message || 'Signal not found'}</p>
+                <p className="text-gray-600 dark:text-gray-300">{(error as Error | undefined)?.message || 'Signal not found'}</p>
               )}
               <Link href="/signals" className="text-blue-600 hover:text-blue-700 mt-4 inline-block">
                 ← Back to Signals
@@ -143,7 +143,7 @@ function SignalDetailPageContent() {
   const colors = generateColors(signal.answerOptions.length);
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-background">
       <Header />
 
       <div className="container mx-auto px-6 py-12">
@@ -151,15 +151,15 @@ function SignalDetailPageContent() {
         {/* Signal Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">{signal.name}</h1>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">{signal.name}</h1>
             <div className="flex items-center gap-4 mt-2">
-              <span className={`px-2 py-1 text-xs rounded ${signal.active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
+              <span className={`${signal.active ? 'badge-success' : 'badge-neutral'} badge-sm`}>
                 {signal.active ? 'Active' : 'Inactive'}
               </span>
-              <span className="text-sm text-gray-600">
+              <span className="text-sm text-gray-600 dark:text-gray-300">
                 {signal.voteCount} votes/{signal.runFrequency === 'hourly' ? 'hour' : signal.runFrequency === 'daily' ? 'day' : signal.runFrequency === 'weekly' ? 'week' : 'month'}
               </span>
-              <span className="text-sm text-gray-600">
+              <span className="text-sm text-gray-600 dark:text-gray-300">
                 {signal.runs.length} completed runs
               </span>
             </div>
@@ -171,8 +171,8 @@ function SignalDetailPageContent() {
                   onClick={() => updateVisibility.mutate({ signalId, isPublic: !signal.isPublic })}
                   className={`${
                     signal.isPublic
-                      ? 'p-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50'
-                      : 'p-2 text-gray-600 hover:text-gray-700 hover:bg-gray-100'
+                      ? 'p-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:text-blue-400 dark:hover:text-blue-300 dark:hover:bg-blue-900/20'
+                      : 'p-2 text-gray-600 hover:text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:text-gray-200 dark:hover:bg-white/10'
                   } rounded-md transition-colors`}
                   title={signal.isPublic ? 'Public' : 'Private'}
                 >
@@ -204,14 +204,14 @@ function SignalDetailPageContent() {
         <div className="grid md:grid-cols-2 gap-8 mb-8">
           <div className="card">
             <div className="p-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-3">Question</h2>
-              <p className="text-gray-700">{signal.question}</p>
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">Question</h2>
+              <p className="text-gray-700 dark:text-gray-300">{signal.question}</p>
             </div>
           </div>
           
           <div className="card">
             <div className="p-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-3">Answer Options</h2>
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">Answer Options</h2>
               <div className="grid grid-cols-2 gap-2">
                 {signal.answerOptions.map((option: string, index: number) => (
                   <div key={option} className="flex items-center">
@@ -219,7 +219,7 @@ function SignalDetailPageContent() {
                       className="w-4 h-4 rounded mr-2" 
                       style={{ backgroundColor: colors[index] }}
                     ></div>
-                    <span className="text-gray-700">{option}</span>
+                    <span className="text-gray-700 dark:text-gray-300">{option}</span>
                   </div>
                 ))}
               </div>
@@ -231,9 +231,9 @@ function SignalDetailPageContent() {
         {signal.countries && signal.countries.length > 0 && (
           <div className="card mb-8">
             <div className="p-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-3">Country Filter</h2>
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">Country Filter</h2>
               <div className="flex flex-col gap-2">
-                <p className="text-sm text-gray-600">
+                <p className="text-sm text-gray-600 dark:text-gray-300">
                   This signal is filtered to responses from the following {signal.countries.length === 1 ? 'country' : 'countries'}:
                 </p>
                 <CountryFlags countries={signal.countries} />

@@ -86,7 +86,7 @@ function CreateSignalPageContent() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-background">
       <Header />
 
       <div className="container mx-auto px-6 py-12">
@@ -102,7 +102,7 @@ function CreateSignalPageContent() {
             <form onSubmit={handleSubmit} className="p-8 space-y-8">
               {/* Signal Name */}
               <div>
-                <label htmlFor="name" className="block text-sm font-semibold text-gray-900 mb-3">
+                <label htmlFor="name" className="block text-sm font-semibold text-gray-900 dark:text-white mb-3">
                   Signal Name
                 </label>
                 <input
@@ -118,7 +118,7 @@ function CreateSignalPageContent() {
 
               {/* Question */}
               <div>
-                <label htmlFor="question" className="block text-sm font-semibold text-gray-900 mb-3">
+                <label htmlFor="question" className="block text-sm font-semibold text-gray-900 dark:text-white mb-3">
                   Survey Question
                 </label>
                 <textarea
@@ -134,7 +134,7 @@ function CreateSignalPageContent() {
 
               {/* Answer Options */}
               <div>
-                <label className="block text-sm font-semibold text-gray-900 mb-3">
+                <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-3">
                   Answer Options
                 </label>
                 <div className="space-y-3">
@@ -170,7 +170,7 @@ function CreateSignalPageContent() {
 
               {/* Vote Count */}
               <div>
-                <label htmlFor="voteCount" className="block text-sm font-semibold text-gray-900 mb-3">
+                <label htmlFor="voteCount" className="block text-sm font-semibold text-gray-900 dark:text-white mb-3">
                   Vote Target per Run
                 </label>
                 <input
@@ -183,14 +183,14 @@ function CreateSignalPageContent() {
                   onChange={(e) => setFormData(prev => ({ ...prev, voteCount: e.target.value }))}
                   className="input-field"
                 />
-                <p className="text-sm text-gray-600 mt-2">
+                <p className="text-sm text-gray-600 dark:text-gray-300 mt-2">
                   Number of responses you want to collect per run (100-1000)
                 </p>
               </div>
 
               {/* Run Frequency */}
               <div>
-                <label htmlFor="runFrequency" className="block text-sm font-semibold text-gray-900 mb-3">
+                <label htmlFor="runFrequency" className="block text-sm font-semibold text-gray-900 dark:text-white mb-3">
                   Run Frequency
                 </label>
                 <select
@@ -204,7 +204,7 @@ function CreateSignalPageContent() {
                   <option value="weekly">Weekly - Run every week</option>
                   <option value="monthly">Monthly - Run every month</option>
                 </select>
-                <p className="text-sm text-gray-600 mt-2">
+                <p className="text-sm text-gray-600 dark:text-gray-300 mt-2">
                   Choose how frequently this signal should collect new responses
                 </p>
               </div>
@@ -212,7 +212,7 @@ function CreateSignalPageContent() {
               {/* Visibility (Admins only) */}
               {isAdmin && (
                 <div>
-                  <label className="block text-sm font-semibold text-gray-900 mb-3">
+                  <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-3">
                     Visibility
                   </label>
                   <div className="flex items-center gap-3">
@@ -229,11 +229,11 @@ function CreateSignalPageContent() {
                         }`}
                       />
                     </button>
-                    <span className="text-gray-700">
+                    <span className="text-gray-700 dark:text-gray-300">
                       {formData.isPublic ? 'Public (visible to everyone)' : 'Private (visible only to you)'}
                     </span>
                   </div>
-                  <p className="text-sm text-gray-600 mt-2">
+                  <p className="text-sm text-gray-600 dark:text-gray-300 mt-2">
                     Only admins can change visibility. Public signals are visible without signing in.
                   </p>
                 </div>

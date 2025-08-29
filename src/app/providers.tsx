@@ -176,3 +176,5 @@ function MonitorSession() {
 
   return null
 }
+
+// Theme manual override removed — rely on system preference only

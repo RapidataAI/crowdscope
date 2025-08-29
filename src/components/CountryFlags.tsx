@@ -14,7 +14,7 @@ export function CountryFlags({ countries }: CountryFlagsProps) {
           key={countryCode}
           src={`https://flagcdn.com/24x18/${countryCode.toLowerCase()}.png`}
           alt={`${countryCode} flag`}
-          className="border border-gray-200 rounded-sm"
+          className="border border-gray-200 dark:border-white/10 rounded-sm"
           title={countryCode.toUpperCase()}
         />
       ))}

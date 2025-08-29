@@ -23,7 +23,7 @@ export function AuthGuard({ children, fallback }: AuthGuardProps) {
   if (auth.isLoading) {
     return (
       fallback || (
-        <div className="min-h-screen bg-white flex items-center justify-center"></div>
+        <div className="min-h-screen bg-background flex items-center justify-center"></div>
       )
     );
   }
@@ -31,9 +31,9 @@ export function AuthGuard({ children, fallback }: AuthGuardProps) {
   if (!auth.user) {
     return (
       fallback || (
-        <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="min-h-screen bg-background flex items-center justify-center">
           <div className="text-center">
-            <div className="text-gray-500">Redirecting to login...</div>
+            <div className="text-gray-500 dark:text-gray-400">Redirecting to login...</div>
           </div>
         </div>
       )
