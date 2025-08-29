@@ -64,6 +64,12 @@ function SignalDetailPageContent() {
   const [countriesInput, setCountriesInput] = React.useState('');
 
   // Action handlers using React Query mutations
+  // Keep countries input in sync with loaded signal
+  React.useEffect(() => {
+    if (signal?.countries) setCountriesInput(signal.countries.join(', '));
+    else setCountriesInput('');
+  }, [signal?.countries]);
+
   const handleExecuteSignal = async () => {
     if (!signalId) return;
     executeSignal.mutate(signalId);
@@ -146,10 +152,6 @@ function SignalDetailPageContent() {
   }
 
   const colors = generateColors(signal.answerOptions.length);
-  React.useEffect(() => {
-    if (signal?.countries) setCountriesInput(signal.countries.join(', '));
-    else setCountriesInput('');
-  }, [signal?.countries]);
 
   return (
     <div className="min-h-screen bg-background">

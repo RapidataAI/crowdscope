@@ -1,6 +1,11 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Ensure Next.js uses this folder as the workspace root for Turbopack
+  // to avoid picking up a parent lockfile in a monorepo.
+  turbopack: {
+    root: __dirname,
+  },
   async rewrites() {
     return [
       {
