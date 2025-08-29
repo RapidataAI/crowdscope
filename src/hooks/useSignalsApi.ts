@@ -56,6 +56,7 @@ interface CreateSignalData {
   createdBy: string;
   userEmail: string;
   isPublic?: boolean;
+  countries?: string[];
 }
 
 // Query Keys - centralized for easy cache management
@@ -273,6 +274,41 @@ export const useUpdateSignalVisibility = () => {
     onSettled: (_data, _error, { signalId }) => {
       queryClient.invalidateQueries({ queryKey: signalKeys.lists() });
       queryClient.invalidateQueries({ queryKey: signalKeys.detail(signalId) });
+    },
+  });
+};
+
+/**
+ * Update signal countries filter — admin only
+ */
+export const useUpdateSignalCountries = () => {
+  const { mutationFn } = useAuthenticatedApi();
+  const { showError } = useGlobalNotifications();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ signalId, countries }: { signalId: string; countries: string[] | null }) => mutationFn({
+      url: `/api/signals/${signalId}`,
+      method: 'PATCH',
+      body: { countries },
+    }),
+    onMutate: async ({ signalId, countries }) => {
+      await queryClient.cancelQueries({ queryKey: signalKeys.detail(signalId) });
+      const previous = queryClient.getQueryData<SignalDetail>(signalKeys.detail(signalId));
+      queryClient.setQueryData<SignalDetail>(signalKeys.detail(signalId), (old) => (
+        old ? { ...old, countries: countries ?? undefined } : old
+      ));
+      return { previous };
+    },
+    onError: (error: Error, { signalId }, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(signalKeys.detail(signalId), context.previous);
+      }
+      showError(`Failed to update countries: ${error.message}`);
+    },
+    onSettled: (_data, _error, { signalId }) => {
+      queryClient.invalidateQueries({ queryKey: signalKeys.detail(signalId) });
+      queryClient.invalidateQueries({ queryKey: signalKeys.lists() });
     },
   });
 };

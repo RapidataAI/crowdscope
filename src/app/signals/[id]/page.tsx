@@ -1,5 +1,6 @@
 'use client';
 
+import React from "react";
 import Link from "next/link";
 import { useParams, useRouter, usePathname } from "next/navigation";
 import { useAuth } from "react-oidc-context";
@@ -8,7 +9,7 @@ import { SignalChart } from "@/components/SignalChart";
 import { RunsList } from "@/components/RunsList";
 import { SignalActions } from "@/components/SignalActions";
 import { CountryFlags } from "@/components/CountryFlags";
-import { useSignal, usePublicSignal, useExecuteSignal, useDeleteSignal, useDeleteRun, useUpdateSignalVisibility } from "@/hooks/useSignalsApi";
+import { useSignal, usePublicSignal, useExecuteSignal, useDeleteSignal, useDeleteRun, useUpdateSignalVisibility, useUpdateSignalCountries } from "@/hooks/useSignalsApi";
 import { useGlobalConfirmation } from "@/app/providers";
 
 // Generate distinct colors for options
@@ -50,13 +51,17 @@ function SignalDetailPageContent() {
   const isAdmin = isLoggedIn && rolesArray.some((r) => r.toLowerCase() === 'admin');
   const { data: authedSignal, isLoading: isLoadingAuthed, error: authedError } = useSignal(signalId);
   const { data: publicSignal, isLoading: isLoadingPublic, error: publicError } = usePublicSignal(signalId);
-  const signal = isLoggedIn ? authedSignal : publicSignal;
-  const isLoading = isLoggedIn ? isLoadingAuthed : isLoadingPublic;
-  const error = isLoggedIn ? authedError : publicError;
+  const authedNotFound = isLoggedIn && (authedError as Error | undefined)?.message?.includes('404');
+  const signal = isLoggedIn ? (authedSignal ?? (authedNotFound ? publicSignal : undefined)) : publicSignal;
+  const isLoading = isLoggedIn ? (isLoadingAuthed || (authedNotFound && isLoadingPublic)) : isLoadingPublic;
+  const error = isLoggedIn ? (authedNotFound ? publicError : authedError) : publicError;
   const executeSignal = useExecuteSignal();
   const deleteSignal = useDeleteSignal();
   const deleteRun = useDeleteRun();
   const updateVisibility = useUpdateSignalVisibility();
+  const updateCountries = useUpdateSignalCountries();
+  const [editingCountries, setEditingCountries] = React.useState(false);
+  const [countriesInput, setCountriesInput] = React.useState('');
 
   // Action handlers using React Query mutations
   const handleExecuteSignal = async () => {
@@ -141,6 +146,10 @@ function SignalDetailPageContent() {
   }
 
   const colors = generateColors(signal.answerOptions.length);
+  React.useEffect(() => {
+    if (signal?.countries) setCountriesInput(signal.countries.join(', '));
+    else setCountriesInput('');
+  }, [signal?.countries]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -228,19 +237,64 @@ function SignalDetailPageContent() {
         </div>
 
         {/* Country Filter */}
-        {signal.countries && signal.countries.length > 0 && (
-          <div className="card mb-8">
-            <div className="p-6">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">Country Filter</h2>
-              <div className="flex flex-col gap-2">
-                <p className="text-sm text-gray-600 dark:text-gray-300">
-                  This signal is filtered to responses from the following {signal.countries.length === 1 ? 'country' : 'countries'}:
-                </p>
-                <CountryFlags countries={signal.countries} />
-              </div>
+        <div className="card mb-8">
+          <div className="p-6">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Country Filter</h2>
+              {isAdmin && (
+                <button
+                  onClick={() => setEditingCountries(v => !v)}
+                  className="text-sm px-3 py-1 rounded-md border border-gray-200 dark:border-white/10 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-white/10"
+                >
+                  {editingCountries ? 'Cancel' : (signal.countries && signal.countries.length > 0 ? 'Edit' : 'Add')}
+                </button>
+              )}
             </div>
+            {!editingCountries ? (
+              signal.countries && signal.countries.length > 0 ? (
+                <div className="flex flex-col gap-2">
+                  <p className="text-sm text-gray-600 dark:text-gray-300">
+                    This signal is filtered to responses from the following {signal.countries.length === 1 ? 'country' : 'countries'}:
+                  </p>
+                  <CountryFlags countries={signal.countries} />
+                </div>
+              ) : (
+                <p className="text-sm text-gray-600 dark:text-gray-300">No country filter applied.</p>
+              )
+            ) : (
+              <div className="flex flex-col gap-3">
+                <input
+                  type="text"
+                  value={countriesInput}
+                  onChange={(e) => setCountriesInput(e.target.value)}
+                  placeholder="Comma or space-separated ISO codes, e.g., US, DE, GB"
+                  className="input-field"
+                />
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => {
+                      const parsed = countriesInput
+                        .split(/[\s,]+/)
+                        .map(c => c.trim().toUpperCase())
+                        .filter(c => c.length >= 2)
+                        .map(c => c.slice(0, 2));
+                      updateCountries.mutate({ signalId, countries: parsed.length ? parsed : null }, { onSuccess: () => setEditingCountries(false) });
+                    }}
+                    className="btn-primary"
+                  >
+                    Save
+                  </button>
+                  <button
+                    onClick={() => setEditingCountries(false)}
+                    className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-md transition-colors font-medium dark:bg-white/10 dark:hover:bg-white/20 dark:text-gray-200"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
-        )}
+        </div>
 
         {/* Chart */}
         <SignalChart runs={signal.runs} answerOptions={signal.answerOptions} />

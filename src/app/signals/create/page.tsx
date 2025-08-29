@@ -28,6 +28,7 @@ function CreateSignalPageContent() {
     voteCount: '100',
     runFrequency: 'daily',
     isPublic: false,
+    countries: '' as string, // comma-separated ISO codes for input
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -44,6 +45,14 @@ function CreateSignalPageContent() {
     }
 
     // Use React Query mutation
+    const parsedCountries = isAdmin
+      ? formData.countries
+          .split(/[\s,]+/)
+          .map((c) => c.trim().toUpperCase())
+          .filter((c) => c.length >= 2)
+          .map((c) => c.slice(0, 2))
+      : [];
+
     createSignal.mutate({
       name: formData.name,
       question: formData.question,
@@ -53,6 +62,7 @@ function CreateSignalPageContent() {
       createdBy: user.profile.sub,
       userEmail: user.profile.email || '',
       ...(isAdmin ? { isPublic: formData.isPublic } : {}),
+      ...(isAdmin && parsedCountries.length > 0 ? { countries: parsedCountries } : {}),
     }, {
       onSuccess: () => {
         router.push('/signals');
@@ -235,6 +245,26 @@ function CreateSignalPageContent() {
                   </div>
                   <p className="text-sm text-gray-600 dark:text-gray-300 mt-2">
                     Only admins can change visibility. Public signals are visible without signing in.
+                  </p>
+                </div>
+              )}
+
+              {/* Countries filter (Admins only) */}
+              {isAdmin && (
+                <div>
+                  <label htmlFor="countries" className="block text-sm font-semibold text-gray-900 dark:text-white mb-3">
+                    Country Filters (optional)
+                  </label>
+                  <input
+                    type="text"
+                    id="countries"
+                    value={formData.countries}
+                    onChange={(e) => setFormData(prev => ({ ...prev, countries: e.target.value }))}
+                    placeholder="Comma or space-separated ISO codes, e.g., US, DE, GB"
+                    className="input-field"
+                  />
+                  <p className="text-sm text-gray-600 dark:text-gray-300 mt-2">
+                    Restrict responses to these countries. Uses ISO 3166-1 alpha‑2 codes.
                   </p>
                 </div>
               )}

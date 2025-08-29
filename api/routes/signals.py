@@ -62,15 +62,26 @@ def create_signal_route():
         if data["runFrequency"] not in valid_frequencies:
             return jsonify({"error": f"Invalid runFrequency. Must be one of: {valid_frequencies}"}), 400
 
-        # Enforce visibility: only Admins can set public visibility
+        # Enforce visibility and countries: only Admins can set these
         try:
             admin = is_admin()
         except Exception:
             admin = False
         if not admin:
             data["isPublic"] = False
+            data["countries"] = None
         else:
             data["isPublic"] = bool(data.get("isPublic", False))
+            if "countries" in data:
+                if data["countries"] is None:
+                    pass
+                elif not isinstance(data["countries"], list):
+                    return jsonify({"error": "countries must be an array of 2-letter codes or null"}), 400
+                else:
+                    try:
+                        data["countries"] = [str(c).strip().upper()[:2] for c in data["countries"] if str(c).strip()]
+                    except Exception:
+                        return jsonify({"error": "invalid countries list"}), 400
 
         signal = create_signal(user_id, data)
         
@@ -114,12 +125,22 @@ def update_signal_route(signal_id):
         if "active" in data and not isinstance(data["active"], bool):
             return jsonify({"error": "Active field must be boolean"}), 400
         
-        # Only admins can modify visibility
-        if "isPublic" in data:
+        # Only admins can modify visibility or countries
+        if "isPublic" in data or "countries" in data:
             if not is_admin():
-                return jsonify({"error": "Only admins can change visibility"}), 403
-            if not isinstance(data["isPublic"], bool):
+                return jsonify({"error": "Only admins can change visibility or countries"}), 403
+            if "isPublic" in data and not isinstance(data["isPublic"], bool):
                 return jsonify({"error": "isPublic field must be boolean"}), 400
+            if "countries" in data:
+                countries = data["countries"]
+                if countries is not None and not isinstance(countries, list):
+                    return jsonify({"error": "countries must be an array of 2-letter codes or null"}), 400
+                if isinstance(countries, list):
+                    # Normalize to upper-case 2-letter strings
+                    try:
+                        data["countries"] = [str(c).strip().upper()[:2] for c in countries if str(c).strip()]
+                    except Exception:
+                        return jsonify({"error": "invalid countries list"}), 400
         
         # Determine admin once
         admin = False

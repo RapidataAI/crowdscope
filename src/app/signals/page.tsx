@@ -27,11 +27,6 @@ function SignalCard({ signal, isLoggedIn, onToggle }: { signal: Signal; isLogged
         <div className="flex justify-between items-start mb-4">
           <h3 className="text-xl font-semibold text-gray-900 dark:text-white group-hover:text-blue-600 transition-colors duration-200">{signal.name}</h3>
           <div className="relative flex items-center gap-2">
-            {signal.isPublic !== undefined && (
-              <span className={`${signal.isPublic ? 'badge-info' : 'badge-neutral'} badge-sm`}>
-                {signal.isPublic ? 'Public' : 'Private'}
-              </span>
-            )}
             {isLoggedIn ? (
               <button
                 onClick={(e) => { e.preventDefault(); e.stopPropagation(); onToggle?.(signal.id, signal.active); }}

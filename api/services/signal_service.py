@@ -72,6 +72,11 @@ def update_signal(signal_id, user_id, update_data, is_admin=False):
     if "isPublic" in update_data and isinstance(update_data["isPublic"], bool):
         signal.isPublic = update_data["isPublic"]
         signal.updatedAt = datetime.utcnow()
+    if is_admin and "countries" in update_data:
+        # Allow admins to set countries to list or clear (None)
+        countries = update_data["countries"]
+        signal.countries = countries if countries is None or isinstance(countries, list) else signal.countries
+        signal.updatedAt = datetime.utcnow()
     
     db.session.commit()
     return signal
