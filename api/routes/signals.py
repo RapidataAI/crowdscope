@@ -178,7 +178,12 @@ def get_signal_details_route(signal_id):
         if not user_id:
             return jsonify({"error": "User ID not available"}), 400
         
-        details = get_signal_details(signal_id, user_id)
+        # Admin users may access any signal details
+        try:
+            admin = is_admin()
+        except Exception:
+            admin = False
+        details = get_signal_details(signal_id, user_id, is_admin=admin)
         if not details:
             return jsonify({"error": "Signal not found or access denied"}), 404
         

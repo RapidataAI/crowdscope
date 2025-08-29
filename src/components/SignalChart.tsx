@@ -76,7 +76,7 @@ export function SignalChart({ runs, answerOptions }: SignalChartProps) {
       const date = new Date(data.completedAt as string).toLocaleDateString();
       
       return (
-        <div className="rounded-lg p-3 shadow-lg bg-white border border-gray-300 dark:bg-white/5 dark:border-white/10">
+        <div className="rounded-lg p-3 shadow-lg bg-white border border-gray-300 dark:bg-[#0b1020] dark:border-white/10">
           <p className="font-medium text-gray-900 dark:text-white">Run #{label}</p>
           <p className="text-sm text-gray-700 dark:text-gray-300 mb-2">{date}</p>
           <p className="text-sm text-gray-700 dark:text-gray-300 mb-2">Total: {data.totalVotes as number} votes</p>

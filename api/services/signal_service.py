@@ -98,10 +98,15 @@ def delete_signal_with_cleanup(signal_id, user_id):
     db.session.commit()
     return True
 
-def get_signal_details(signal_id, user_id):
-    """Get detailed signal information including runs and responses"""
+def get_signal_details(signal_id, user_id, is_admin: bool = False):
+    """Get detailed signal information including runs and responses.
+    Admins may access any signal; non-admins may only access their own.
+    """
     signal = db.session.get(Signal, signal_id)
-    if not signal or signal.createdBy != user_id:
+    if not signal:
+        return None
+    # Only owner can access unless admin
+    if not is_admin and signal.createdBy != user_id:
         return None
     
     # Get all runs with their responses
