@@ -391,7 +391,7 @@ function SignalDetailPageContent() {
         </div>
 
         {/* Chart */}
-        <SignalChart runs={signal.runs} answerOptions={signal.answerOptions} />
+        <SignalChart runs={signal.runs} dailyAggregated={signal.dailyAggregated} answerOptions={signal.answerOptions} />
 
         {/* Execute Signal CTA for empty state */}
         {isLoggedIn && signal.runs.length === 0 && signal.active && (

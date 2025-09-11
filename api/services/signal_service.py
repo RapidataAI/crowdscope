@@ -4,6 +4,70 @@ from models import Signal, SignalRun, Response, User
 from config.database import db
 from .rapidata_service import delete_rapidata_order
 
+def _get_daily_aggregated_runs(signal_id):
+    """
+    Get daily aggregated signal run data using efficient SQL queries.
+    Returns runs aggregated by completion date.
+    """
+    # First, get daily aggregates: date, run count, total votes
+    daily_stats = db.session.query(
+        func.date(SignalRun.completedAt).label('completion_date'),
+        func.count(SignalRun.id).label('run_count'),
+        func.max(SignalRun.completedAt).label('latest_completion')
+    ).filter(
+        SignalRun.signalId == signal_id,
+        SignalRun.status == 'completed',
+        SignalRun.completedAt.isnot(None)
+    ).group_by(
+        func.date(SignalRun.completedAt)
+    ).order_by(
+        func.date(SignalRun.completedAt)
+    ).all()
+    
+    if not daily_stats:
+        return []
+    
+    aggregated_runs = []
+    
+    # For each day, get the aggregated response data
+    for day_stat in daily_stats:
+        completion_date = day_stat.completion_date
+        
+        # Get total votes and responses for this day using a single query
+        daily_responses = db.session.query(
+            Response.option,
+            func.sum(Response.voteCount).label('total_votes')
+        ).join(
+            SignalRun, Response.signalRunId == SignalRun.id
+        ).filter(
+            SignalRun.signalId == signal_id,
+            SignalRun.status == 'completed',
+            func.date(SignalRun.completedAt) == completion_date
+        ).group_by(
+            Response.option
+        ).all()
+        
+        # Calculate totals and percentages
+        total_daily_votes = sum(resp.total_votes for resp in daily_responses)
+        responses = {}
+        percentages = {}
+        
+        for resp in daily_responses:
+            responses[resp.option] = resp.total_votes
+            percentages[resp.option] = (resp.total_votes / total_daily_votes * 100) if total_daily_votes > 0 else 0
+        
+        aggregated_runs.append({
+            'id': f"day_{completion_date.isoformat()}",
+            'date': completion_date.isoformat(),
+            'runCount': day_stat.run_count,
+            'totalVotes': total_daily_votes,
+            'responses': responses,
+            'percentages': percentages,
+            'completedAt': day_stat.latest_completion.isoformat()
+        })
+    
+    return aggregated_runs
+
 def get_user_signals(user_id, load_all=False):
     """Get all signals with run counts for a user, or all signals if load_all is True"""
     # Always join with User and get run counts, filter based on load_all
@@ -124,7 +188,10 @@ def get_signal_details(signal_id, user_id, is_admin: bool = False):
     if not is_admin and signal.createdBy != user_id:
         return None
     
-    # Get all runs with their responses
+    # Get daily aggregated runs for chart
+    daily_aggregated = _get_daily_aggregated_runs(signal_id)
+    
+    # Get individual runs for runs list
     runs = db.session.query(SignalRun).filter(
         SignalRun.signalId == signal_id
     ).order_by(SignalRun.startedAt.desc()).all()
@@ -165,7 +232,8 @@ def get_signal_details(signal_id, user_id, is_admin: bool = False):
         'isPublic': signal.isPublic,
         'active': signal.active,
         'createdAt': signal.createdAt.isoformat(),
-        'runs': runs_data
+        'runs': runs_data,
+        'dailyAggregated': daily_aggregated
     }
 
 def get_public_signals():
@@ -215,6 +283,10 @@ def get_public_signal_details(signal_id):
     if not signal.active:
         return None
 
+    # Get daily aggregated runs for chart
+    daily_aggregated = _get_daily_aggregated_runs(signal_id)
+    
+    # Get individual runs for runs list
     runs = db.session.query(SignalRun).filter(
         SignalRun.signalId == signal_id
     ).order_by(SignalRun.startedAt.desc()).all()
@@ -255,7 +327,8 @@ def get_public_signal_details(signal_id):
         'isPublic': signal.isPublic,
         'active': signal.active,
         'createdAt': signal.createdAt.isoformat(),
-        'runs': runs_data
+        'runs': runs_data,
+        'dailyAggregated': daily_aggregated
     }
 
 def execute_signal(signal_id, user_id):

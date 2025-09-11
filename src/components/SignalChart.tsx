@@ -21,8 +21,19 @@ interface Run {
   percentages: Percentages;
 }
 
+interface DailyRun {
+  id: string;
+  date: string;
+  runCount: number;
+  totalVotes: number;
+  responses: Response;
+  percentages: Percentages;
+  completedAt: string;
+}
+
 interface SignalChartProps {
   runs: Run[];
+  dailyAggregated?: DailyRun[];
   answerOptions: string[];
 }
 
@@ -44,20 +55,28 @@ const generateColors = (count: number) => {
   return colors.slice(0, count);
 };
 
-export function SignalChart({ runs, answerOptions }: SignalChartProps) {
+export function SignalChart({ runs, dailyAggregated, answerOptions }: SignalChartProps) {
+  // Use daily aggregated data if available, otherwise fall back to individual runs
+  const dataToUse = dailyAggregated || runs;
+  
   // Prepare chart data
-  const chartData = runs.map((run, index) => {
+  const chartData = dataToUse.map((item, index) => {
     const data: Record<string, unknown> = {
       runIndex: index + 1,
-      completedAt: run.completedAt,
-      totalVotes: run.totalVotes,
-      runId: run.id,
-      responses: run.responses,
+      completedAt: item.completedAt,
+      totalVotes: item.totalVotes,
+      runId: item.id,
+      responses: item.responses,
+      // Add additional info for daily aggregated data
+      ...(dailyAggregated && 'runCount' in item ? { 
+        date: item.date,
+        runCount: item.runCount 
+      } : {})
     };
     
     // Add percentage data for each option
     answerOptions.forEach(option => {
-      data[option] = run.percentages[option] || 0;
+      data[option] = item.percentages[option] || 0;
     });
     
     return data;
@@ -73,13 +92,21 @@ export function SignalChart({ runs, answerOptions }: SignalChartProps) {
   }) => {
     if (active && payload && payload.length) {
       const data = payload[0].payload;
-      const date = new Date(data.completedAt as string).toLocaleDateString();
+      const isDaily = dailyAggregated && data.date;
+      const displayDate = isDaily 
+        ? new Date(data.date as string).toLocaleDateString()
+        : new Date(data.completedAt as string).toLocaleDateString();
       
       return (
         <div className="rounded-lg p-3 shadow-lg bg-white border border-gray-300 dark:bg-[#0b1020] dark:border-white/10">
-          <p className="font-medium text-gray-900 dark:text-white">Run #{label}</p>
-          <p className="text-sm text-gray-700 dark:text-gray-300 mb-2">{date}</p>
-          <p className="text-sm text-gray-700 dark:text-gray-300 mb-2">Total: {data.totalVotes as number} votes</p>
+          <p className="font-medium text-gray-900 dark:text-white">
+            {isDaily ? displayDate : `Run #${label}`}
+          </p>
+          {!isDaily && <p className="text-sm text-gray-700 dark:text-gray-300 mb-2">{displayDate}</p>}
+          <p className="text-sm text-gray-700 dark:text-gray-300 mb-2">
+            Total: {data.totalVotes as number} votes
+            {isDaily && data.runCount && ` (${data.runCount} runs)`}
+          </p>
           <div className="space-y-1">
             {answerOptions.map((option, index) => (
               <div key={option} className="flex items-center justify-between text-sm">
