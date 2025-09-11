@@ -105,7 +105,7 @@ export function SignalChart({ runs, dailyAggregated, answerOptions }: SignalChar
           {!isDaily && <p className="text-sm text-gray-700 dark:text-gray-300 mb-2">{displayDate}</p>}
           <p className="text-sm text-gray-700 dark:text-gray-300 mb-2">
             Total: {data.totalVotes as number} votes
-            {isDaily && data.runCount && ` (${data.runCount} runs)`}
+            {isDaily && data.runCount ? ` (${data.runCount} runs)` : ''}
           </p>
           <div className="space-y-1">
             {answerOptions.map((option, index) => (
