@@ -9,7 +9,7 @@ import { SignalChart } from "@/components/SignalChart";
 import { RunsList } from "@/components/RunsList";
 import { SignalActions } from "@/components/SignalActions";
 import { CountryFlags } from "@/components/CountryFlags";
-import { useSignal, usePublicSignal, useExecuteSignal, useDeleteSignal, useDeleteRun, useUpdateSignalVisibility, useUpdateSignalCountries } from "@/hooks/useSignalsApi";
+import { useSignal, usePublicSignal, useExecuteSignal, useDeleteSignal, useDeleteRun, useUpdateSignalVisibility, useUpdateSignalCountries, useUpdateSignalSettings } from "@/hooks/useSignalsApi";
 import { useGlobalConfirmation } from "@/app/providers";
 
 // Generate distinct colors for options
@@ -60,8 +60,12 @@ function SignalDetailPageContent() {
   const deleteRun = useDeleteRun();
   const updateVisibility = useUpdateSignalVisibility();
   const updateCountries = useUpdateSignalCountries();
+  const updateSettings = useUpdateSignalSettings();
   const [editingCountries, setEditingCountries] = React.useState(false);
   const [countriesInput, setCountriesInput] = React.useState('');
+  const [editingSettings, setEditingSettings] = React.useState(false);
+  const [settingsFrequency, setSettingsFrequency] = React.useState<string>('daily');
+  const [settingsVoteCount, setSettingsVoteCount] = React.useState<number>(100);
 
   // Action handlers using React Query mutations
   // Keep countries input in sync with loaded signal
@@ -69,6 +73,14 @@ function SignalDetailPageContent() {
     if (signal?.countries) setCountriesInput(signal.countries.join(', '));
     else setCountriesInput('');
   }, [signal?.countries]);
+
+  // Keep settings inputs in sync with loaded signal
+  React.useEffect(() => {
+    if (signal) {
+      setSettingsFrequency(signal.runFrequency);
+      setSettingsVoteCount(signal.voteCount);
+    }
+  }, [signal]);
 
   const handleExecuteSignal = async () => {
     if (!signalId) return;
@@ -288,7 +300,87 @@ function SignalDetailPageContent() {
                   </button>
                   <button
                     onClick={() => setEditingCountries(false)}
-                    className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-md transition-colors font-medium dark:bg-white/10 dark:hover:bg-white/20 dark:text-gray-200"
+                    className="btn-secondary"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Run Settings */}
+        <div className="card mb-8">
+          <div className="p-6">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Run Settings</h2>
+              {isLoggedIn && (
+                <button
+                  onClick={() => setEditingSettings(v => !v)}
+                  className="text-sm px-3 py-1 rounded-md border border-gray-200 dark:border-white/10 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-white/10"
+                >
+                  {editingSettings ? 'Cancel' : 'Edit'}
+                </button>
+              )}
+            </div>
+            {!editingSettings ? (
+              <div className="grid gap-2 md:grid-cols-2">
+                <div>
+                  <div className="text-sm text-gray-500 dark:text-gray-400">Run Interval</div>
+                  <div className="text-gray-800 dark:text-gray-100 capitalize">{signal.runFrequency}</div>
+                </div>
+                <div>
+                  <div className="text-sm text-gray-500 dark:text-gray-400">Responses per datapoint</div>
+                  <div className="text-gray-800 dark:text-gray-100">{signal.voteCount}</div>
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-3">
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="flex flex-col gap-1">
+                    <label className="text-sm text-gray-600 dark:text-gray-300">Run Interval</label>
+                    <select
+                      value={settingsFrequency}
+                      onChange={(e) => setSettingsFrequency(e.target.value)}
+                      className="select-field"
+                    >
+                      <option value="hourly">Hourly</option>
+                      <option value="daily">Daily</option>
+                      <option value="weekly">Weekly</option>
+                      <option value="monthly">Monthly</option>
+                    </select>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-sm text-gray-600 dark:text-gray-300">Responses per datapoint</label>
+                    <input
+                      type="number"
+                      min={1}
+                      max={10000}
+                      value={settingsVoteCount}
+                      onChange={(e) => setSettingsVoteCount(Number(e.target.value))}
+                      className="input-field"
+                    />
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => {
+                      updateSettings.mutate({ signalId, runFrequency: settingsFrequency, voteCount: settingsVoteCount }, {
+                        onSuccess: () => setEditingSettings(false)
+                      });
+                    }}
+                    className="btn-primary"
+                  >
+                    Save
+                  </button>
+                  <button
+                    onClick={() => {
+                      setEditingSettings(false);
+                      setSettingsFrequency(signal.runFrequency);
+                      setSettingsVoteCount(signal.voteCount);
+                    }}
+                    className="btn-secondary"
                   >
                     Cancel
                   </button>

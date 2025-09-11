@@ -77,7 +77,17 @@ def update_signal(signal_id, user_id, update_data, is_admin=False):
         countries = update_data["countries"]
         signal.countries = countries if countries is None or isinstance(countries, list) else signal.countries
         signal.updatedAt = datetime.utcnow()
-    
+    # Allow owner/admin to update runFrequency and voteCount
+    if "runFrequency" in update_data:
+        signal.runFrequency = update_data["runFrequency"]
+        signal.updatedAt = datetime.utcnow()
+    if "voteCount" in update_data:
+        try:
+            signal.voteCount = int(update_data["voteCount"])  # validation handled at route layer
+            signal.updatedAt = datetime.utcnow()
+        except Exception:
+            pass
+
     db.session.commit()
     return signal
 

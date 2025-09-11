@@ -279,6 +279,49 @@ export const useUpdateSignalVisibility = () => {
 };
 
 /**
+ * Update signal run settings (runFrequency, voteCount)
+ */
+export const useUpdateSignalSettings = () => {
+  const { mutationFn } = useAuthenticatedApi();
+  const { showSuccess, showError } = useGlobalNotifications();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ signalId, runFrequency, voteCount }: { signalId: string; runFrequency: string; voteCount: number }) => mutationFn({
+      url: `/api/signals/${signalId}`,
+      method: 'PATCH',
+      body: { runFrequency, voteCount },
+    }),
+    onMutate: async ({ signalId, runFrequency, voteCount }) => {
+      await queryClient.cancelQueries({ queryKey: signalKeys.detail(signalId) });
+      const previous = queryClient.getQueryData<SignalDetail>(signalKeys.detail(signalId));
+      // Optimistic update in details
+      queryClient.setQueryData<SignalDetail>(signalKeys.detail(signalId), (old) => (
+        old ? { ...old, runFrequency, voteCount } : old
+      ));
+      // Also update in lists
+      queryClient.setQueryData<Signal[]>(signalKeys.list(), (old) => (
+        old?.map(s => s.id === signalId ? { ...s, runFrequency, voteCount } as Signal : s)
+      ));
+      return { previous };
+    },
+    onSuccess: () => {
+      showSuccess('Run settings updated');
+    },
+    onError: (error: Error, { signalId }, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(signalKeys.detail(signalId), context.previous);
+      }
+      showError(`Failed to update run settings: ${error.message}`);
+    },
+    onSettled: (_data, _error, { signalId }) => {
+      queryClient.invalidateQueries({ queryKey: signalKeys.detail(signalId) });
+      queryClient.invalidateQueries({ queryKey: signalKeys.lists() });
+    },
+  });
+};
+
+/**
  * Update signal countries filter — admin only
  */
 export const useUpdateSignalCountries = () => {

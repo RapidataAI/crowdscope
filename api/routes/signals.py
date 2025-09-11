@@ -124,7 +124,7 @@ def update_signal_route(signal_id):
         
         if "active" in data and not isinstance(data["active"], bool):
             return jsonify({"error": "Active field must be boolean"}), 400
-        
+
         # Only admins can modify visibility or countries
         if "isPublic" in data or "countries" in data:
             if not is_admin():
@@ -141,6 +141,22 @@ def update_signal_route(signal_id):
                         data["countries"] = [str(c).strip().upper()[:2] for c in countries if str(c).strip()]
                     except Exception:
                         return jsonify({"error": "invalid countries list"}), 400
+
+        # Validate optional runFrequency
+        if "runFrequency" in data:
+            valid_frequencies = ['hourly', 'daily', 'weekly', 'monthly']
+            if data["runFrequency"] not in valid_frequencies:
+                return jsonify({"error": f"Invalid runFrequency. Must be one of: {valid_frequencies}"}), 400
+
+        # Validate optional voteCount (responses per datapoint)
+        if "voteCount" in data:
+            try:
+                vc = int(data["voteCount"])
+            except Exception:
+                return jsonify({"error": "voteCount must be an integer"}), 400
+            if vc < 1 or vc > 10000:
+                return jsonify({"error": "voteCount must be between 1 and 10000"}), 400
+            data["voteCount"] = vc
         
         # Determine admin once
         admin = False

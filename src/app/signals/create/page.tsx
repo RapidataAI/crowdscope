@@ -207,7 +207,7 @@ function CreateSignalPageContent() {
                   id="runFrequency"
                   value={formData.runFrequency}
                   onChange={(e) => setFormData(prev => ({ ...prev, runFrequency: e.target.value }))}
-                  className="input-field"
+                  className="select-field"
                 >
                   <option value="hourly">Hourly - Run every hour</option>
                   <option value="daily">Daily - Run every day</option>
