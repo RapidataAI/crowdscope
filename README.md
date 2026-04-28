@@ -1,36 +1,77 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# CrowdScope
 
-## Getting Started
+Track public-opinion trends through recurring polls — "signals" — backed by [Rapidata](https://rapidata.ai)'s human crowd.
 
-First, run the development server:
+A signal is a configured survey campaign (question, answer options, response count, optional country filter) that runs on a schedule. Each run dispatches a Rapidata classification order, collects real human responses, and adds a daily data point to a trend chart. Useful for tracking how public opinion shifts on a question over time.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## Architecture
+
+- **Frontend** — Next.js 15 (App Router), React 19, Tailwind CSS, [`react-oidc-context`](https://github.com/authts/react-oidc-context) for authentication, TanStack Query for data fetching, Recharts for trend charts.
+- **Backend** — Flask + SQLAlchemy + Postgres. Validates JWTs against Rapidata's OIDC server (`auth.rapidata.ai`). A background worker thread runs scheduled signal executions.
+- **Integration** — uses the [`rapidata`](https://pypi.org/project/rapidata/) Python SDK to create classification orders and collect results.
+
+```
+┌──────────────┐   /api/*   ┌─────────────┐   SDK   ┌──────────────┐
+│  Next.js UI  │ ─────────► │ Flask API   │ ──────► │  Rapidata    │
+│  (port 3000) │            │ (port 5328) │         │  Platform    │
+└──────────────┘            └──────┬──────┘         └──────────────┘
+                                   │
+                            ┌──────▼──────┐
+                            │  Postgres   │
+                            │ (port 5433) │
+                            └─────────────┘
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Project layout
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```
+src/                  # Next.js frontend
+├── app/              # App router pages (signals list, detail, create, auth callback)
+├── components/       # Reusable UI components (charts, modals, headers)
+├── hooks/            # Custom React hooks (API calls, auth, notifications)
+├── lib/              # Query client + helpers
+└── middleware.ts     # Next.js middleware
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+api/                  # Flask backend
+├── app.py            # Application factory + entrypoint
+├── worker.py         # Background worker thread (runs scheduled signals)
+├── config/           # Settings + DB initialization
+├── middleware/       # CORS, auth (OIDC JWT validation), error handling
+├── models/           # SQLAlchemy models (User, Signal, SignalRun, Response)
+├── routes/           # HTTP route handlers
+├── services/         # Business logic + Rapidata SDK calls
+├── migrations/       # Alembic database migrations
+└── flake.nix         # Nix dev shell (Python 3.13 + deps)
+```
 
-## Learn More
+## Running locally
 
-To learn more about Next.js, take a look at the following resources:
+You'll need Node.js 20+, Docker (for Postgres), and Nix (for the Python dev shell).
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+# 1. Configure environment
+cp .env.example .env
+# Edit .env with your StackAuth keys and database URL
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+# 2. Start Postgres
+docker compose up -d
 
-## Deploy on Vercel
+# 3. Install frontend deps and start everything
+npm install
+npm run dev   # runs frontend (port 3000) + backend (port 5328) concurrently
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+The backend depends on Rapidata's public OIDC server and the `rapidata` Python SDK; you'll need a Rapidata account to obtain real client credentials at runtime. The credentials are minted automatically via `auth.rapidata.ai/client` on first sign-in.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### Production build
+
+```bash
+npm run build           # type-check + bundle the Next.js app
+npm run prod            # start frontend on :9001 and backend (gunicorn) on :5328
+```
+
+## License
+
+Source-available under the [PolyForm Noncommercial License 1.0.0](LICENSE). You may use, modify, and distribute the code for noncommercial purposes (research, education, personal experimentation). **Commercial use requires a separate license from Rapidata** — please open an issue on this repository to start that conversation.
+
+Copyright © 2025 Rapidata AG.
