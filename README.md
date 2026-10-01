@@ -2,13 +2,13 @@
 
 Track public-opinion trends through recurring polls — "signals" — backed by [Rapidata](https://rapidata.ai)'s human crowd.
 
-A signal is a configured survey campaign (question, answer options, response count, optional country filter) that runs on a schedule. Each run dispatches a Rapidata classification order, collects real human responses, and adds a daily data point to a trend chart. Useful for tracking how public opinion shifts on a question over time.
+A signal is a configured survey campaign (question, answer options, response count, optional country filter) that runs on a schedule. Each run dispatches a Rapidata classification job, collects real human responses, and adds a daily data point to a trend chart. Useful for tracking how public opinion shifts on a question over time.
 
 ## Architecture
 
 - **Frontend** — Next.js 15 (App Router), React 19, Tailwind CSS, [`react-oidc-context`](https://github.com/authts/react-oidc-context) for authentication, TanStack Query for data fetching, Recharts for trend charts.
 - **Backend** — Flask + SQLAlchemy + Postgres. Validates JWTs against Rapidata's OIDC server (`auth.rapidata.ai`). A background worker thread runs scheduled signal executions.
-- **Integration** — uses the [`rapidata`](https://pypi.org/project/rapidata/) Python SDK to create classification orders and collect results.
+- **Integration** — uses the [`rapidata`](https://pypi.org/project/rapidata/) Python SDK to create classification jobs and collect results.
 
 ```
 ┌──────────────┐   /api/*   ┌─────────────┐   SDK   ┌──────────────┐

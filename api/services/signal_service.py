@@ -2,7 +2,7 @@ from datetime import datetime
 from sqlalchemy import func
 from models import Signal, SignalRun, Response, User
 from config.database import db
-from .rapidata_service import delete_rapidata_order
+from .rapidata_service import delete_rapidata_job
 
 def _get_daily_aggregated_runs(signal_id):
     """
@@ -156,22 +156,21 @@ def update_signal(signal_id, user_id, update_data, is_admin=False):
     return signal
 
 def delete_signal_with_cleanup(signal_id, user_id):
-    """Delete a signal and clean up associated Rapidata orders"""
+    """Delete a signal and clean up associated Rapidata jobs"""
     signal = db.session.get(Signal, signal_id)
     if not signal or signal.createdBy != user_id:
         return False
     
     user = db.session.get(User, user_id)
     if user and user.rapidataClientId and user.rapidataClientSecret:
-        # Clean up Rapidata orders for non-completed runs
-        runs_with_orders = db.session.query(SignalRun).filter(
+        runs_with_jobs = db.session.query(SignalRun).filter(
             SignalRun.signalId == signal_id,
             SignalRun.rapidataOrderId.isnot(None),
             SignalRun.status != 'completed'
         ).all()
         
-        for run in runs_with_orders:
-            delete_rapidata_order(run.rapidataOrderId, user.rapidataClientId, user.rapidataClientSecret)
+        for run in runs_with_jobs:
+            delete_rapidata_job(run.rapidataOrderId, user.rapidataClientId, user.rapidataClientSecret)
     
     db.session.delete(signal)
     db.session.commit()
@@ -356,11 +355,10 @@ def delete_signal_run(signal_id, run_id, user_id):
     if not run or run.signalId != signal_id:
         return False
     
-    # Delete Rapidata order if needed
     if run.status != 'completed' and run.rapidataOrderId:
         user = db.session.get(User, user_id)
         if user and user.rapidataClientId and user.rapidataClientSecret:
-            delete_rapidata_order(run.rapidataOrderId, user.rapidataClientId, user.rapidataClientSecret)
+            delete_rapidata_job(run.rapidataOrderId, user.rapidataClientId, user.rapidataClientSecret)
     
     db.session.delete(run)
     db.session.commit()
