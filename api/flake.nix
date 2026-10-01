@@ -40,7 +40,7 @@
             export PATH="$PIP_PREFIX/bin:$PATH"
             
             # Install rapidata to the local project directory
-            pip install -U --prefix="$PIP_PREFIX" rapidata
+            pip install -U --prefix="$PIP_PREFIX" "rapidata>=3.25.0"
             
             echo "CrowdScope API development environment ready!"
             echo "Run: python index.py"

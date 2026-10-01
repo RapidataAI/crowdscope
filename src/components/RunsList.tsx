@@ -37,7 +37,7 @@ export function RunsList({ runs, onDeleteRun }: RunsListProps) {
           <div key={run.id} className="flex items-center justify-between p-4 rounded-lg bg-gray-50 dark:bg-white/5 hover:bg-gray-100 dark:hover:bg-white/10 cursor-pointer transition-colors group">
             <div 
               className="flex items-center gap-4 flex-1"
-              onClick={() => window.open(`https://app.rapidata.ai/order/detail/${run.rapidataOrderId}`, '_blank')}
+              onClick={() => window.open(`https://app.rapidata.ai/jobs/${run.rapidataOrderId}`, '_blank')}
             >
               <div className="flex items-center justify-center w-8 h-8 bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300 rounded-full text-sm font-medium group-hover:bg-blue-200 dark:group-hover:bg-blue-800/50 transition-colors">
                 #{index + 1}

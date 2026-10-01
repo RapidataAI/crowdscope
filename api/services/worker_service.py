@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 from sqlalchemy import func, create_engine
 from sqlalchemy.orm import sessionmaker
 from models import SignalRun, Signal, Response, User
-from .rapidata_service import create_rapidata_order, get_rapidata_order_status, get_rapidata_order_results
+from .rapidata_service import create_rapidata_job, get_rapidata_job_status, get_rapidata_job_results, extract_vote_counts
 from config.settings import get_config
 import os
 
@@ -74,7 +74,7 @@ def check_signals_need_runs():
         session.close()
 
 def process_created_runs():
-    """Create rapidata orders for SignalRuns with 'created' status"""
+    """Create rapidata jobs for SignalRuns with 'created' status"""
     session = SessionLocal()
     try:
         created_runs = session.query(SignalRun).filter(
@@ -82,7 +82,7 @@ def process_created_runs():
             SignalRun.rapidataOrderId.is_(None)
         ).all()
         
-        print(f"Found {len(created_runs)} runs to create rapidata orders for")
+        print(f"Found {len(created_runs)} runs to create rapidata jobs for")
         
         for run in created_runs:
             print(f"Processing run {run.id} for signal {run.signalId}")
@@ -106,7 +106,7 @@ def process_created_runs():
                     'client_secret': user.rapidataClientSecret
                 }
                 
-                result = create_rapidata_order({
+                result = create_rapidata_job({
                     "signal_id": signal.id,
                     "name": signal.name,
                     "question": signal.question,
@@ -117,12 +117,12 @@ def process_created_runs():
                 
                 if result["success"]:
                     run.status = 'processing'
-                    run.rapidataOrderId = result["rapidata_order_id"]
-                    print(f"Successfully created rapidata order for run {run.id}, order: {result['rapidata_order_id']}")
+                    run.rapidataOrderId = result["rapidata_job_id"]
+                    print(f"Successfully created rapidata job for run {run.id}, job: {result['rapidata_job_id']}")
                 else:
                     run.status = 'failed'
                     run.errorMessage = result.get("details", result.get("error", "Unknown error"))
-                    print(f"Failed to create rapidata order for run {run.id}: {run.errorMessage}")
+                    print(f"Failed to create rapidata job for run {run.id}: {run.errorMessage}")
                 
                 session.commit()
                 
@@ -139,8 +139,8 @@ def process_created_runs():
     finally:
         session.close()
 
-def poll_rapidata_orders():
-    """Poll rapidata orders for runs that are in 'processing' status"""
+def poll_rapidata_jobs():
+    """Poll rapidata jobs for runs that are in 'processing' status"""
     session = SessionLocal()
     try:
         runs_to_check = session.query(SignalRun).filter(
@@ -148,7 +148,7 @@ def poll_rapidata_orders():
             SignalRun.status.in_(['processing'])
         ).all()
         
-        print(f"Found {len(runs_to_check)} runs to poll rapidata orders for")
+        print(f"Found {len(runs_to_check)} runs to poll rapidata jobs for")
         
         for run in runs_to_check:
             try:
@@ -162,28 +162,28 @@ def poll_rapidata_orders():
                     print(f"User credentials not found for run {run.id}")
                     continue
                 
-                order_status = get_rapidata_order_status(
+                job_status = get_rapidata_job_status(
                     run.rapidataOrderId, 
                     user.rapidataClientId, 
                     user.rapidataClientSecret
                 )
                 
-                print(f"Run {run.id} - Rapidata order {run.rapidataOrderId} status: {order_status}")
+                print(f"Run {run.id} - Rapidata job {run.rapidataOrderId} status: {job_status}")
 
-                if order_status and order_status.lower() == 'failed':
+                if job_status and job_status.lower() == 'failed':
                     run.status = 'failed'
-                    run.errorMessage = 'Rapidata order failed during processing'
-                    print(f"Failed run {run.id} - rapidata order failed during processing")
-                elif order_status and order_status.lower() == 'completed':
+                    run.errorMessage = 'Rapidata job failed during processing'
+                    print(f"Failed run {run.id} - rapidata job failed during processing")
+                elif job_status and job_status.lower() == 'completed':
                     try:
-                        results = get_rapidata_order_results(
+                        results = get_rapidata_job_results(
                             run.rapidataOrderId,
                             user.rapidataClientId,
                             user.rapidataClientSecret
                         )
                         
-                        if results and 'summary' in results:
-                            vote_counts = results['summary']
+                        vote_counts = extract_vote_counts(results) if results else {}
+                        if vote_counts:
                             print(f"Extracting results for run {run.id}: {vote_counts}")
                             
                             for option, count in vote_counts.items():
@@ -199,7 +199,7 @@ def poll_rapidata_orders():
                             print(f"Completed run {run.id} - extracted {len(vote_counts)} vote counts")
                         else:
                             run.status = 'failed'
-                            run.errorMessage = 'No results available from Rapidata order'
+                            run.errorMessage = 'No results available from Rapidata job'
                             
                     except Exception as e:
                         run.status = 'failed'
@@ -209,10 +209,10 @@ def poll_rapidata_orders():
                 session.commit()
                 
             except Exception as e:
-                print(f"Error polling rapidata order for run {run.id}: {e}")
+                print(f"Error polling rapidata job for run {run.id}: {e}")
                 
     except Exception as e:
-        print(f"Error in poll_rapidata_orders: {e}")
+        print(f"Error in poll_rapidata_jobs: {e}")
         session.rollback()
         raise
     finally:
@@ -229,8 +229,8 @@ def run_worker_cycle_logic():
         print("Step 2: Processing created runs...")
         process_created_runs()
         
-        print("Step 3: Polling rapidata orders...")
-        poll_rapidata_orders()
+        print("Step 3: Polling rapidata jobs...")
+        poll_rapidata_jobs()
         
         print("=== Worker cycle completed ===")
         return True
