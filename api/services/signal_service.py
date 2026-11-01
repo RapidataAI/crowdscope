@@ -2,7 +2,7 @@ from datetime import datetime
 from sqlalchemy import func
 from models import Signal, SignalRun, Response, User
 from config.database import db
-from .rapidata_service import delete_rapidata_order
+from .rapidata_service import delete_rapidata_job
 
 def _get_daily_aggregated_runs(signal_id):
     """
@@ -171,7 +171,7 @@ def delete_signal_with_cleanup(signal_id, user_id):
         ).all()
         
         for run in runs_with_orders:
-            delete_rapidata_order(run.rapidataOrderId, user.rapidataClientId, user.rapidataClientSecret)
+            delete_rapidata_job(run.rapidataOrderId, user.rapidataClientId, user.rapidataClientSecret)
     
     db.session.delete(signal)
     db.session.commit()
@@ -360,7 +360,7 @@ def delete_signal_run(signal_id, run_id, user_id):
     if run.status != 'completed' and run.rapidataOrderId:
         user = db.session.get(User, user_id)
         if user and user.rapidataClientId and user.rapidataClientSecret:
-            delete_rapidata_order(run.rapidataOrderId, user.rapidataClientId, user.rapidataClientSecret)
+            delete_rapidata_job(run.rapidataOrderId, user.rapidataClientId, user.rapidataClientSecret)
     
     db.session.delete(run)
     db.session.commit()
